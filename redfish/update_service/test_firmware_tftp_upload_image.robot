@@ -133,6 +133,7 @@ ImageURI Download Install
     # Download image from TFTP server via ImageURI to BMC.
     Redfish.Post  /redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate
     ...  body={"ImageURI": "tftp://${TFTP_SERVER}/${image_file_name}"}
+    ...  valid_status_codes=[${HTTP_OK}, ${HTTP_ACCEPTED}]
 
     Sleep  120s
 
