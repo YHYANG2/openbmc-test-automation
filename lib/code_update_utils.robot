@@ -529,12 +529,10 @@ Get Latest Image ID
     # Example: # ls /tmp/images/
     #            1b714fb7
     ${image_id}=  Get Latest File  /tmp/images/
-    Valid Value  image_id
 
-    # Though an image sub-directory was found, it really isn't valid unless
-    # the MANIFEST file is present.
-    BMC Execute Command  ls -l /tmp/images/${image_id}/MANIFEST
+    Return From Keyword If  '${image_id}' != '${EMPTY}'  ${image_id}
 
+    ${image_id}=   Get Image Id   Updating
     [Return]  ${image_id}
 
 
@@ -550,6 +548,25 @@ Check Image Update Progress State
 
     ${state}=  Get Image Update Progress State  image_id=${image_id}
     Valid Value  state  valid_values=[${match_state}]
+
+
+Get Image Id
+    [Documentation]  Get image id.
+    [Arguments]  ${match_state}
+
+    # Description of argument(s):
+    # match_state    The expected state. This may be one or more comma-separated values
+    #                (e.g. "Disabled", "Disabled, Updating"). If the actual state matches
+    #                any of the states named in this argument, this keyword passes.
+
+    ${sw_member_list}=  Redfish.Get Members List  /redfish/v1/UpdateService/FirmwareInventory
+
+    FOR  ${sw_member}  IN  @{sw_member_list}
+      ${status}=  Redfish.Get Attribute  ${sw_member}  Status
+      Return From Keyword If  '${status['State']}' == ${match_state}  ${sw_member.split('/')[-1]}
+    END
+
+    [Return]  None
 
 
 Get Image Update Progress State

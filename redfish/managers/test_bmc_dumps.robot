@@ -9,6 +9,13 @@ Suite Setup         Redfish.Login
 Test Setup          Redfish Delete All BMC Dumps
 Test Teardown       Test Teardown Execution
 
+*** Variables ***
+
+# Total size of the dump in kilo bytes
+${BMC_DUMP_TOTAL_SIZE}       ${1024}
+
+# Minimum space required for one bmc dump in kilo bytes
+${BMC_DUMP_MIN_SPACE_REQD}   ${20}
 
 *** Variables ***
 
