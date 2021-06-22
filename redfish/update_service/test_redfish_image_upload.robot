@@ -2,13 +2,12 @@
 Documentation         Test upload image with invalid images.
 ...                   This test expects the following bad tarball image files
 ...                   to exist in the BAD_IMAGES_DIR_PATH/TFTP_SERVER:
-...                       bmc_bad_manifest.static.mtd.tar
-...                       bmc_nokernel_image.static.mtd.tar
-...                       bmc_invalid_key.static.mtd.tar
-...                       bios_bad_manifest.bios.tar
-...                       bios_no_image.bios.tar
-...                       bios_invalid_key.bios.tar
-
+...                       bmc_bad_manifest.ubi.mtd.tar
+...                       bmc_nokernel_image.ubi.mtd.tar
+...                       bmc_invalid_key.ubi.mtd.tar
+...                       pnor_bad_manifest.pnor.squashfs.tar
+...                       pnor_nokernel_image.pnor.squashfs.tar
+...                       pnor_invalid_key.pnor.squashfs.tar
 # Test Parameters:
 # OPENBMC_HOST         The BMC host name or IP address.
 # OPENBMC_USERNAME     The OS login userid.
@@ -20,8 +19,8 @@ Resource               ../../lib/connection_client.robot
 Resource               ../../lib/rest_client.robot
 Resource               ../../lib/openbmc_ffdc.robot
 Resource               ../../lib/bmc_redfish_resource.robot
-Resource               ../../lib/redfish_code_update_utils.robot
 Resource               ../../lib/code_update_utils.robot
+Resource               ../../lib/redfish_code_update_utils.robot
 Library                OperatingSystem
 Library                ../../lib/code_update_utils.py
 Library                ../../lib/gen_robot_valid.py
@@ -29,7 +28,7 @@ Library                ../../lib/gen_robot_valid.py
 Suite Setup            Suite Setup Execution
 Suite Teardown         Redfish.Logout
 Test Setup             Printn
-#Test Teardown          FFDC On Test Case Fail
+Test Teardown          Test Teardown Execution
 
 Force Tags  Upload_Test
 
@@ -135,14 +134,14 @@ Redfish Bad Firmware Update
     ${status_code}=  Upload Image To BMC
     ...  ${REDFISH_BASE_URI}UpdateService
     ...  ${timeout}
-    ...  valid_status_codes=[${HTTP_OK}, ${HTTP_INTERNAL_SERVER_ERROR}, ${HTTP_ACCEPTED}]
+    ...  valid_status_codes=[${HTTP_ACCEPTED}, ${HTTP_BAD_REQUEST}]
     ...  data=${image_data}
 
-    Return From Keyword If  ${status_code} == ${HTTP_INTERNAL_SERVER_ERROR}
+    Rprint Vars  status_code
+    Return From Keyword If  ${status_code} == ${HTTP_BAD_REQUEST}
 
     ${image_id}=  Get Latest Image ID
     Rprint Vars  image_id
-
     Check Image Update Progress State
     ...  match_state='Updating', 'Disabled'  image_id=${image_id}
 
@@ -160,11 +159,14 @@ Redfish TFTP Bad Firmware Update
     # Download image from TFTP server to BMC.
     Redfish.Post  /redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate
     ...  body={"TransferProtocol" : "TFTP", "ImageURI" : "${TFTP_SERVER}/${image_file_name}"}
-    Sleep  60s
+    ...  valid_status_codes=[${HTTP_ACCEPTED}, ${HTTP_BAD_REQUEST}]
+
     ${image_version}=  Get Image Version From SFTP Server  ${SFTP_SERVER}  ${SFTP_USER}  ${SFTP_PATH}/${image_file_name}
     Return From Keyword If  '${image_version}' == '${EMPTY}'
-    Rprint Vars  ${image_version}
+    Rprint Vars  image_version
+
     ${image_info}=  Get Software Inventory State By Version  ${image_version}
+    Rprint Vars  image_info
     Run Keyword If  '${empty_info}' == '${TRUE}'
     ...    Return From Keyword If  '${image_info}' == '${EMPTY}'
     ...  ELSE
@@ -173,10 +175,6 @@ Redfish TFTP Bad Firmware Update
     ${image_id}=  Get Image Id By Image Info  ${image_info}
     Return From Keyword If  '${image_id}' == '${EMPTY}'
     Rprint Vars  image_id
-
-    # Wait for image tar file to download complete.
-    #${image_id}=  Wait Until Keyword Succeeds  60 sec  0.1 sec  Get Latest Image ID
-   # Rprint Vars  image_id
 
     Check Image Update Progress State
     ...  match_state='Updating', 'Disabled'  image_id=${image_id}
@@ -189,3 +187,8 @@ Get Image Id By Image Info
     [Arguments]  ${image_info}
 
     [Return]  ${image_info["image_id"]}
+
+Test Teardown Execution
+    [Documentation]  Do the post test teardown.
+
+    FFDC On Test Case Fail
