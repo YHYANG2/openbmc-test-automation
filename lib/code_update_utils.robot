@@ -436,7 +436,7 @@ Enable Field Mode And Verify Unmount
     # After running, /xyz/openbmc_project/software should look like this:
     # /xyz/openbmc_project/software
     # {
-    #     "FieldModeEnabled": 1,
+    #     "FieldModeEnabled": True,
     #     "associations": [
     #         [
     #             "active",
@@ -451,7 +451,7 @@ Enable Field Mode And Verify Unmount
     #     ]
     # }
 
-    ${args}=  Create Dictionary  data=${1}
+    ${args}=  Create Dictionary  data=${True}
     Write Attribute  ${SOFTWARE_VERSION_URI}  FieldModeEnabled  data=${args}
     Sleep  5s
     BMC Execute Command  [ ! -d "/usr/local/share" ]
