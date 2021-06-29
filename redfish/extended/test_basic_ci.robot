@@ -41,11 +41,9 @@ Verify Application Services Running At Standby
     # No jobs running.
 
     Redfish Hard Power Off
-    BMC Execute Command  systemctl stop rotate-event-logs.timer
     ${stdout}  ${stderr}  ${rc}=  BMC Execute Command
     ...  systemctl list-jobs --no-pager | cat
     Should Be Equal As Strings  ${stdout}  No jobs running.
-    BMC Execute Command  systemctl start rotate-event-logs.timer
 
 
 Verify Front And Rear LED At Standby
