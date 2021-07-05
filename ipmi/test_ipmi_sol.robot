@@ -1,6 +1,5 @@
 *** Settings ***
 Documentation       This suite tests IPMI SOL in OpenBMC.
-
 Resource            ../lib/ipmi_client.robot
 Resource            ../lib/openbmc_ffdc.robot
 Resource            ../lib/state_manager.robot
@@ -21,7 +20,6 @@ Force Tags          SOL_Test
 Set SOL Enabled
     [Documentation]  Verify enabling SOL via IPMI.
     [Tags]  Set_SOL_Enabled
-
     ${msg}=  Run Keyword  Run IPMI Standard Command
     ...  sol set enabled true
 
@@ -36,7 +34,6 @@ Set SOL Enabled
 Set SOL Disabled
     [Documentation]  Verify disabling SOL via IPMI.
     [Tags]  Set_SOL_Disabled
-
     ${msg}=  Run Keyword  Run IPMI Standard Command
     ...  sol set enabled false
 
@@ -55,7 +52,6 @@ Set SOL Disabled
 Set Valid SOL Privilege Level
     [Documentation]  Verify valid SOL's privilege level via IPMI.
     [Tags]  Set_Valid_SOL_Privilege_Level
-
     ${privilege_level_list}=  Create List  user  operator  admin  oem
 
     FOR  ${item}  IN  @{privilege_level_list}
@@ -68,7 +64,6 @@ Set Valid SOL Privilege Level
 Set Invalid SOL Privilege Level
     [Documentation]  Verify invalid SOL's retry count via IPMI.
     [Tags]  Set_Invalid_SOL_Privilege_Level
-
     ${value}=  Generate Random String  ${8}
     ${msg}=  Run Keyword And Expect Error  *  Run IPMI Standard Command
     ...  sol set privilege-level ${value}
@@ -78,7 +73,6 @@ Set Invalid SOL Privilege Level
 Set Invalid SOL Retry Count
     [Documentation]  Verify invalid SOL's retry count via IPMI.
     [Tags]  Set_Invalid_SOL_Retry_Count
-
     # Any integer above 7 is invalid for SOL retry count.
     ${value}=  Evaluate  random.randint(8, 10000)  modules=random
 
@@ -90,7 +84,6 @@ Set Invalid SOL Retry Count
 Set Invalid SOL Retry Interval
     [Documentation]  Verify invalid SOL's retry interval via IPMI.
     [Tags]  Set_Invalid_SOL_Retry_Interval
-
     # Any integer above 255 is invalid for SOL retry interval.
     ${value}=  Evaluate  random.randint(256, 10000)  modules=random
 
@@ -102,7 +95,6 @@ Set Invalid SOL Retry Interval
 Set Invalid SOL Character Accumulate Level
     [Documentation]  Verify invalid SOL's character accumulate level via IPMI.
     [Tags]  Set_Invalid_SOL_Character_Accumulate_Level
-
     # Any integer above 255 is invalid for SOL character accumulate level.
     ${value}=  Evaluate  random.randint(256, 10000)  modules=random
 
@@ -114,7 +106,6 @@ Set Invalid SOL Character Accumulate Level
 Set Invalid SOL Character Send Threshold
     [Documentation]  Verify invalid SOL's character send threshold via IPMI.
     [Tags]  Set_Invalid_SOL_Character_Send_Threshold
-
     # Any integer above 255 is invalid for SOL character send threshold.
     ${value}=  Evaluate  random.randint(256, 10000)  modules=random
 
@@ -126,24 +117,15 @@ Set Invalid SOL Character Send Threshold
 Verify SOL During Boot
     [Documentation]  Verify SOL during boot.
     [Tags]  Verify_SOL_During_Boot
-
     Redfish Hard Power Off  stack_mode=skip
     Activate SOL Via IPMI
     Initiate Host Boot Via External IPMI  wait=${0}
 
     Wait Until Keyword Succeeds  3 mins  15 secs
     ...  Check IPMI SOL Output Content  Processor Type
-    #...  Check IPMI SOL Output Content  Welcome to Hostboot
 
-    #Wait Until Keyword Succeeds  3 mins  15 secs
-    #...  Check IPMI SOL Output Content  ISTEP
-    Deactivate SOL Via IPMI
-
-    Sleep  10s
-    ${os_state}=  Get Host State Attribute  OperatingSystemState
-    Rprint Vars  os_state
-    Run Keyword if  '${OS_BOOT_COMPLETE}' != '${os_state}'
-    ...  Wait For Host To Ping  ${OS_HOST}  5 mins
+    Wait Until Keyword Succeeds  15 mins  15 secs
+    ...  Check IPMI SOL Output Content  cs20-desktop
 
     Redfish Hard Power Off
 
@@ -151,7 +133,6 @@ Verify SOL During Boot
 Verify Deactivate Non Existing SOL
     [Documentation]  Verify deactivate non existing SOL session.
     [Tags]  Verify_Deactivate_Non_Existing_SOL
-
     ${resp}=  Deactivate SOL Via IPMI
     Should Contain  ${resp}  SOL payload already de-activated
     ...  case_insensitive=True
@@ -196,7 +177,6 @@ Set Valid SOL Character Send Threshold
 Verify Continuous Activation And Deactivation Of SOL
     [Documentation]  Continuously on and off SOL.
     [Tags]  Verify_Continuous_Activation_And_Deactivation_Of_SOL
-
     ${iteration_count}=  Evaluate  random.randint(5,10)  modules=random
     FOR  ${iter}  IN RANGE  ${iteration_count}
         Activate SOL Via IPMI
@@ -262,12 +242,12 @@ Verify SOL Setting
     Initiate Host Boot Via External IPMI  wait=${0}
 
     Activate SOL Via IPMI
+
     Wait Until Keyword Succeeds  3 mins  15 secs
     ...  Check IPMI SOL Output Content  Processor Type
-    #...  Check IPMI SOL Output Content  Welcome to Hostboot
 
-    #Wait Until Keyword Succeeds  3 mins  15 secs
-    #...  Check IPMI SOL Output Content  ISTEP
+    Wait Until Keyword Succeeds  15 mins  15 secs
+    ...  Check IPMI SOL Output Content  cs20-desktop
 
 
 Get SOL Setting
@@ -284,7 +264,6 @@ Get SOL Setting
 
 Restore Default SOL Configuration
     [Documentation]  Restore default SOL configuration.
-
     Set SOL Setting  enabled  true
     Set SOL Setting  retry-count  7
     Set SOL Setting  retry-interval  10
@@ -295,7 +274,6 @@ Restore Default SOL Configuration
 
 Test Teardown Execution
     [Documentation]  Do the post test teardown.
-
     Wait Until Keyword Succeeds  15 sec  5 sec  Restore Default SOL Configuration
     Deactivate SOL Via IPMI
     ${sol_log}=  Stop SOL Console Logging
