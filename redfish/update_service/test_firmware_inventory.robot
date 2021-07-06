@@ -138,8 +138,10 @@ Verify Redfish Software Hex ID
     FOR  ${id_key}  IN  @{sw_inv_dict}
       ${sw_inv}=  Get From Dictionary  ${sw_inv_dict}  ${id_key}
       Should Be Equal As Strings  ${id_key}  ${sw_inv['image_id']}
-      Length Should Be  ${sw_inv['image_id']}  ${8}
-      Should Match Regexp  ${sw_inv['image_id']}  [0-9a-f]*
+      Run Keyword If  '${sw_inv['image_id']}'!='me'
+      ...  Length Should Be  ${sw_inv['image_id']}  ${8}
+      Run Keyword If  '${sw_inv['image_id']}'!='me'
+      ...  Should Match Regexp  ${sw_inv['image_id']}  [0-9a-f]*
     END
 
 
@@ -157,10 +159,11 @@ Verify Redfish FirmwareInventory Is Updateable
     FOR  ${sw_member}  IN  @{sw_member_list}
       ${resp}=  Redfish.Get Attribute  ${sw_member}  Updateable
 
+      Run Keyword If  '${sw_member}'!='/redfish/v1/UpdateService/FirmwareInventory/me'
+      ...    Should Be Equal As Strings  ${resp}  True
+
       # Example:
       # "Updateable": true,
-
-      Should Be Equal As Strings  ${resp}  True
 
     END
 
