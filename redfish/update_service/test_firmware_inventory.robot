@@ -197,6 +197,7 @@ Verify Redfish Functional Version Is Same
 Verify Redfish Software Image And Firmware Inventory Are Same
     [Documentation]  Verify the firmware software inventory is same as software images of managers.
     [Tags]  Verify_Redfish_Software_Image_And_Firmware_Inventory_Are_Same
+    ${num_records_sw_inv}=  Set Variable  ${0}
 
     # SoftwareImages
     # /redfish/v1/UpdateService/FirmwareInventory/632c5114
@@ -209,11 +210,13 @@ Verify Redfish Software Image And Firmware Inventory Are Same
     ${sw_member_list}=  Redfish_Utils.Get Member List  /redfish/v1/UpdateService/FirmwareInventory
 
     FOR  ${sw_inv_path}  IN  @{sw_image}
-      List Should Contain Value  ${sw_member_list}  ${sw_inv_path['@odata.id']}
+      ${rc}=  Run Keyword and Return Status
+      ...  List Should Contain Value  ${sw_member_list}  ${sw_inv_path['@odata.id']}
+      ${num_records_sw_inv}=  Set variable if  '${rc}' == 'True'
+      ...  ${num_records_sw_inv+1}
     END
 
     ${num_records_sw_image}=  Get Length  ${sw_image}
-    ${num_records_sw_inv}=  Get Length  ${sw_member_list}
     Should Be Equal  ${num_records_sw_image}  ${num_records_sw_inv}
 
 
