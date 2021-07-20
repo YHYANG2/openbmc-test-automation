@@ -76,6 +76,7 @@ Suite Setup Execution
     Printn
     Redfish.Login
     Redfish Purge Event Log
+    Delete Error Logs
 
 
 Test Teardown Execution

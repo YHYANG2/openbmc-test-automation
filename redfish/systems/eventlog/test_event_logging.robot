@@ -493,10 +493,9 @@ Test Setup Execution
 Test Teardown Execution
     [Documentation]  Do the post test teardown.
 
-    #FFDC On Test Case Fail
+    FFDC On Test Case Fail
     Redfish.Login
     Redfish Purge Event Log
-
 
 Get Redfish Error Entries
     [Documentation]  Return Redfish error ids list.
