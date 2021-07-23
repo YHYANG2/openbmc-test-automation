@@ -5,6 +5,7 @@ Resource         ../../lib/resource.robot
 Resource         ../../lib/bmc_redfish_resource.robot
 Resource         ../../lib/bmc_redfish_utils.robot
 Library          ../../lib/gen_robot_print.py
+Variables        ../../data/oem/nuvoton/olympus.py
 
 Test Setup       Test Setup Execution
 Test Teardown    Test Teardown Execution
@@ -98,6 +99,11 @@ Required Parameters For Sensor Monitoring
     ...  ELSE IF  '${OPENBMC_CONN_METHOD}' == 'telnet'
     ...    Should Not Be Empty   ${OPENBMC_SERIAL_HOST}
     Should Not Be Empty   ${OPENBMC_MODEL}
+
+    ${redfish_sensor_info_map}=  Set Variable
+    ...  ${SENSOR_MAP}
+
+    Set Global Variable  ${redfish_sensor_info_map}
 
 
 Get Sensors Name List From Redfish
