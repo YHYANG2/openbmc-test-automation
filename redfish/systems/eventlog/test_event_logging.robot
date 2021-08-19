@@ -54,7 +54,7 @@ Create Test Event Log And Verify
     [Documentation]  Create event logs and verify via redfish.
     [Tags]  Create_Test_Event_Log_And_Verify
 
-    Create Event Log
+    Create Test Error Log
     Event Log Should Exist
 
 
@@ -77,7 +77,7 @@ Test Event Log Persistency On Restart
     [Documentation]  Restart logging service and verify event logs.
     [Tags]  Test_Event_Log_Persistency_On_Restart
 
-    Create Event Log
+    Create Test Error Log
     Event Log Should Exist
 
     BMC Execute Command
@@ -114,8 +114,8 @@ Test Event Entry Numbering Reset On Restart
     #  "Name": "System Event Log Entries"
     #}
 
-    Create Event Log
-    Create Event Log
+    Create Test Error Log
+    Create Test Error Log
     Event Log Should Exist
 
     Redfish Purge Event Log
@@ -125,9 +125,9 @@ Test Event Entry Numbering Reset On Restart
     ...  systemctl restart xyz.openbmc_project.Logging.service
     Sleep  10s  reason=Wait for logging service to restart properly.
 
-    Create Event Log
+    Create Test Error Log
     ${elogs}=  Get Event Logs
-    Should Be Equal  ${elogs[0]["MessageId"]}  OpenBMC.0.1.IPMIWatchdog  msg=Event log entry is wrong.
+    Should Be Equal  ${elogs[0]["MessageId"]}  Base.1.10.Success  msg=Event log entry is wrong.
 
 
 Test Event Log Persistency On Reboot
@@ -135,7 +135,7 @@ Test Event Log Persistency On Reboot
     [Tags]  Test_Event_Log_Persistency_On_Reboot
 
     Redfish Purge Event Log
-    Create Event Log
+    Create Test Error Log
     Event Log Should Exist
 
     Redfish OBMC Reboot (off)
@@ -170,7 +170,7 @@ Create Test Event Log And Verify Resolved Field
     # by default.
 
     Redfish Purge Event Log
-    Create Event Log
+    Create Test Error Log
     ${elog_entry}=  Get URL List  ${BMC_LOGGING_ENTRY}
     ${resolved}=  Read Attribute  ${elog_entry[0]}  Resolved
     Should Be True  ${resolved} == 0
@@ -204,8 +204,8 @@ Create Test Event Log And Verify Time Stamp
 
     Redfish Purge Event Log
 
-    Create Event Log
-    Create Event Log
+    Create Test Error Log
+    Create Test Error Log
 
     ${elog_entry}=  Get Event Logs
 
@@ -263,7 +263,7 @@ Verify IPMI SEL Delete
     [Tags]  Verify_IPMI_SEL_Delete
 
     Redfish Purge Event Log
-    Create Event Log
+    Create Test Error Log
 
     ${sel_list}=  Run IPMI Standard Command  sel list
     Should Not Be Equal As Strings  ${sel_list}  SEL has no entries
@@ -350,7 +350,7 @@ Create Test Event Log And Delete
     [Documentation]  Create an event log and delete it.
     [Tags]  Create_Test_Event_Log_And_Delete
 
-    Create Event Log
+    Create Test Error Log
     Redfish Purge Event Log
     Event Log Should Not Exist
 
@@ -359,9 +359,9 @@ Create Multiple Test Event Logs And Delete All
     [Documentation]  Create multiple event logs and delete all.
     [Tags]  Create_Multiple_Test_Event_Logs_And_Delete_All
 
-    Create Event Log
-    Create Event Log
-    Create Event Log
+    Create Test Error Log
+    Create Test Error Log
+    Create Test Error Log
     Redfish Purge Event Log
     Event Log Should Not Exist
 
@@ -372,9 +372,9 @@ Create Two Test Event Logs And Delete One
     [Tags]  Create_Two_Test_Event_Logs_And_Delete_One
 
     Redfish Purge Event Log
-    Create Event Log
+    Create Test Error Log
     ${elog_entry}=  Get URL List  ${BMC_LOGGING_ENTRY}
-    Create Event Log
+    Create Test Error Log
     Delete Error log Entry  ${elog_entry[0]}
     ${resp}=  OpenBMC Get Request  ${elog_entry[0]}
     Should Be Equal As Strings  ${resp.status_code}  ${HTTP_NOT_FOUND}
@@ -442,7 +442,7 @@ Test Event Log Wrapping
     # Create event log and verify the entry ID, ${max_num_event_logs + 1}.
     ${next_event_log_id}=  Set Variable  ${max_num_event_logs + 1}
 
-    Create Event Log
+    Create Test Error Log
 
     ${event_log}=  Get Event Logs
 
@@ -532,7 +532,6 @@ Event Log Should Exist
     ${elogs}=  Get Event Logs
     Should Not Be Empty  ${elogs}  msg=System event log entry is not empty.
 
-
 Verify Watchdog EventLog Content
     [Documentation]  Verify watchdog event log content.
 
@@ -544,9 +543,9 @@ Verify Watchdog EventLog Content
     #    "Created": "2019-05-31T18:41:33+00:00",
     #    "EntryType": "Event",
     #    "Id": "31",
-    #    "Message": "xyz.openbmc_project.Control.Boot.Error.WatchdogTimedOut",
+    #    "Message": "Host Watchdog Event: Enabled",
     #    "Name": "System DBus Event Log Entry",
-    #    "Severity": "Critical"
+    #    "Severity": "OK"
     # }
 
     ${elog}=  Get Event Logs
@@ -578,8 +577,3 @@ Create SEL
     Run IPMI Command
     ...  0x0a 0x44 0x00 0x00 0x02 0x00 0x00 0x00 0x00 0x00 0x00 0x04 0x01 ${sensor_number} 0x00 0xa0 0x04 0x07
 
-Create Event Log
-    [Documentation]  Create a Event Log.
-
-    BMC Execute Command  /usr/sbin/watchdog_timeout
-	Sleep  5s
