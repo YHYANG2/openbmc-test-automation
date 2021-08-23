@@ -193,6 +193,8 @@ Create Test Error Log
     #     "Associations": []
     # }
     BMC Execute Command  /tmp/tarball/bin/logging-test -c AutoTestSimple
+    # wait 1 second for make sure every log get different timestamp
+    Sleep  1
 
 Count Error Entries
     [Documentation]  Count Error entries.
@@ -256,6 +258,8 @@ Get Event Logs
     #  "Name": "System Event Log Entries"
     #}
 
+    # wait for redfish log sync
+    Sleep  5
     ${members}=  Redfish.Get Attribute  ${EVENT_LOG_URI}Entries  Members
     [Return]  ${members}
 
