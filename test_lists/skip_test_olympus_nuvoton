@@ -113,8 +113,12 @@
 # That against this test case. Thus, we skip this temporarily and wait community response.
 -e Install_Same_Image_Two_Times
 
-# event log: no max cap
+# redfish/systems/eventlog/test_event_logging.robot
+# event log: no max cap, dbus event log only features
 -e Test_Event_Log_Wrapping
+-e Verify_Event_Logs_Capping
+-e Create_Test_Event_Log_And_Verify_Resolved_Field
+-e Create_Two_Test_Event_Logs_And_Delete_One
 
 -v MACHINE_TYPE:olympus-nuvoton
 -v log_file_path:log.txt
