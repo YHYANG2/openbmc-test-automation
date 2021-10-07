@@ -120,6 +120,20 @@
 -e Create_Test_Event_Log_And_Verify_Resolved_Field
 -e Create_Two_Test_Event_Logs_And_Delete_One
 
+# redfish/managers/test_bmc_dumps.robot
+# skip these test cases due to community already provide fix and wait for merge it.
+-e Verify_User_Initiated_BMC_Dump_When_Host_Powered_Off
+-e Verify_User_Initiated_BMC_Dump_When_Host_Booted
+-e Verify_User_Initiated_BMC_Dump_Size
+-e Verify_Dump_Persistency_On_Dump_Service_Restart
+-e Verify_Dump_Persistency_On_BMC_Reset
+-e Delete_User_Initiated_BMC_Dump_And_Verify
+-e Delete_All_User_Initiated_BMC_Dumps_And_Verify
+-e Create_Two_User_Initiated_BMC_Dump
+-e Create_Two_User_Initiated_BMC_Dumps_And_Delete_One
+-e Create_And_Delete_User_Initiated_BMC_Dump_Multiple_Times
+-e Verify_Maximum_BMC_Dump_Creation
+
 -v MACHINE_TYPE:olympus-nuvoton
 -v log_file_path:log.txt
 -v FORCE_UPDATE:1
