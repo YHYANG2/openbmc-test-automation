@@ -129,7 +129,7 @@
 -e Verify_Dump_Persistency_On_BMC_Reset
 -e Delete_User_Initiated_BMC_Dump_And_Verify
 -e Delete_All_User_Initiated_BMC_Dumps_And_Verify
--e Create_Two_User_Initiated_BMC_Dump
+-e Create_Two_User_Initiated_BMC_Dumps
 -e Create_Two_User_Initiated_BMC_Dumps_And_Delete_One
 -e Create_And_Delete_User_Initiated_BMC_Dump_Multiple_Times
 -e Verify_Maximum_BMC_Dump_Creation
