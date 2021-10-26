@@ -84,10 +84,7 @@ Test Invalid BMC Firmware Update
 Suite Setup Execution
     [Documentation]  Suite Setup Execution.
 
-    ${os_state}=  Get Host State Attribute  OperatingSystemState
-    Rprint Vars  os_state
-    Run Keyword if  '${OS_BOOT_COMPLETE}' != '${os_state}'
-    ...  Redfish Power On
+    Redfish Power On  stack_mode=skip  quiet=1
 
     # generate bad image for test
     ${cmd}=  Catenate  dd if=/dev/urandom of=${HOST_WORK_DIR}/${BAD_IMG} bs=1K count=4
