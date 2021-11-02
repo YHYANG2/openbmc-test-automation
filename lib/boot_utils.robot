@@ -895,14 +895,18 @@ Smart Power Off
     # Unfortunately, that restore affects our local quiet so we must
     # preserve it.
     ${loc_quiet}=  Set Variable  ${quiet}
-    ${cmd_buf}=  Catenate  REST Power Off \ stack_mode=skip
+    ${power_off_action}=       Set Variable If  ${REDFISH_SUPPORT_TRANS_STATE} == ${1}
+    ...  Redfish Power Off         REST Power Off
+    ${power_hard_off_action}=  Set Variable If  ${REDFISH_SUPPORT_TRANS_STATE} == ${1}
+    ...  Redfish Hard Power Off    REST Hard Power Off
+    ${cmd_buf}=  Catenate  ${power_off_action} \ stack_mode=skip
     ...  \ \ quiet=${loc_quiet}
     ${status}  ${ret_values}=  Run Key U  ${cmd_buf}  ignore=${1}
     ...  quiet=${loc_quiet}
 
     Run Keyword If  '${status}' == 'PASS'  Return From Keyword
 
-    ${cmd_buf}=  Catenate  REST Hard Power Off \ stack_mode=skip
+    ${cmd_buf}=  Catenate  ${power_hard_off_action} \ stack_mode=skip
     ...  \ \ quiet=${loc_quiet}
     Run Key U  ${cmd_buf}  quiet=${loc_quiet}
 
