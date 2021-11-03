@@ -5,16 +5,11 @@ Documentation  Network interface configuration and verification
 Resource       ../../lib/bmc_redfish_resource.robot
 Resource       ../../lib/bmc_network_utils.robot
 Resource       ../../lib/openbmc_ffdc.robot
-Resource       ../../lib/ipmi_client.robot
 Library        ../../lib/bmc_network_utils.py
-Library        ../../lib/ipmi_utils.py
-Library        ../../lib/gen_robot_valid.py
-Library        ../../lib/var_funcs.py
 Library        Collections
 
 Test Setup     Test Setup Execution
 Test Teardown  Test Teardown Execution
-Suite Teardown  Suite Teardown Execution
 Suite Setup    Suite Setup Execution
 
 Force Tags     Network_Conf_Test
@@ -40,7 +35,7 @@ ${out_of_range_netmask}    255.256.255.0
 ${more_byte_netmask}       255.255.255.0.0
 ${less_byte_netmask}       255.255.255
 ${threshold_netmask}       255.255.255.255
-${lowest_netmask}          255.0.0.0
+${lowest_netmask}          128.0.0.0
 
 # There will be 4 octets in IP address (e.g. xx.xx.xx.xx)
 # but trying to configure xx.xx.xx
@@ -49,7 +44,7 @@ ${less_octet_ip}           10.3.36
 # For the address 10.6.6.6, the 10.6.6.0 portion describes the
 # network ID and the 6 describe the host.
 
-${network_id}              192.168.1.0
+${network_id}              10.7.7.0
 ${hex_ip}                  0xa.0xb.0xc.0xd
 ${negative_ip}             10.-7.-7.7
 @{static_name_servers}     10.5.5.5
@@ -237,9 +232,9 @@ Add First Octet Threshold IP And Verify
     [Documentation]  Add first octet threshold IP and verify.
     [Tags]  Add_First_Octet_Threshold_IP_And_Verify
     [Teardown]  Run Keywords
-    ...  Delete IP Address  233.7.7.7  AND  Test Teardown Execution
+    ...  Delete IP Address  223.7.7.7  AND  Test Teardown Execution
 
-     Add IP Address  233.7.7.7  ${test_subnet_mask}  ${test_gateway}
+     Add IP Address  223.7.7.7  ${test_subnet_mask}  ${test_gateway}
 
 Add First Octet Lowest IP And Verify
     [Documentation]  Add first octet lowest IP and verify.
@@ -381,7 +376,6 @@ Configure Hexadecimal IP For Gateway
 Get DNS Server And Verify
     [Documentation]  Get DNS server via Redfish and verify.
     [Tags]  Get_DNS_Server_And_Verify
-    [Setup]  DNS Test Setup Execution
 
     Verify CLI and Redfish Nameservers
 
@@ -707,6 +701,7 @@ Clear IP Settings On Fail
 Verify CLI and Redfish Nameservers
     [Documentation]  Verify that nameservers obtained via Redfish do not
     ...  match those found in /etc/resolv.conf.
+
     ${active_channel_config}=  Get Active Channel Config
     ${ethernet_interface}=  Set Variable  ${active_channel_config['${CHANNEL_NUMBER}']['name']}
 
@@ -719,6 +714,7 @@ Verify CLI and Redfish Nameservers
     ${match}=  Evaluate  set($redfish_nameservers) == set($resolve_conf_nameservers)
     Should Be True  ${match}
     ...  The nameservers obtained via Redfish do not match those found in /etc/resolv.conf.
+
 
 Configure Static Name Servers
     [Documentation]  Configure DNS server on BMC.
@@ -743,8 +739,6 @@ Configure Static Name Servers
 
     # Patch operation takes 1 to 3 seconds to set new value.
     Sleep  3s
-
-    Rqprint Vars  valid_status_codes
 
     # Check if newly added DNS server is configured on BMC.
     ${cli_nameservers}=  CLI Get Nameservers
@@ -779,45 +773,11 @@ DNS Test Setup Execution
     # Set suite variables to trigger restoration during teardown.
     Set Suite Variable  ${original_nameservers}
 
-Suite Teardown Execution
-    [Documentation]  Do the suite level teardown.
-
-    Redfish.Login
-
-    OBMC Reboot (off)
-
-Set IPMI Inband Network Configuration
-    [Documentation]  Run sequence of standard IPMI command in-band and set
-    ...              the IP configuration.
-    [Arguments]  ${ip}  ${netmask}  ${gateway}  ${login}=${1}
-
-    # Description of argument(s):
-    # ip       The IP address to be set using ipmitool-inband.
-    # netmask  The Netmask to be set using ipmitool-inband.
-    # gateway  The Gateway address to be set using ipmitool-inband.
-
-    Run Inband IPMI Standard Command
-    ...  lan set ${CHANNEL_NUMBER} ipsrc static  login_host=${login}
-    Sleep  20
-    Run Inband IPMI Standard Command
-    ...  lan set ${CHANNEL_NUMBER} ipaddr ${ip}  login_host=${0}
-    Run Inband IPMI Standard Command
-    ...  lan set ${CHANNEL_NUMBER} netmask ${netmask}  login_host=${0}
-    Run Inband IPMI Standard Command
-    ...  lan set ${CHANNEL_NUMBER} defgw ipaddr ${gateway}  login_host=${0}
-    Sleep  20
-
 Suite Setup Execution
     [Documentation]  Do suite setup execution.
 
-    ${lan_config}=  Get LAN Print Dict  ${CHANNEL_NUMBER}
-    Set Suite Variable  ${ip_address}  ${lan_config['IP Address']}
-    Set Suite Variable  ${subnet_mask}  ${lan_config['Subnet Mask']}
-    Set Suite Variable  ${test_gateway}  ${lan_config['Default Gateway IP']}
-
-    Set IPMI Inband Network Configuration  ${ip_address}  ${subnet_mask}
-    ...  ${test_gateway}  login=${1}
-
+    ${test_gateway}=  Get BMC Default Gateway
+    Set Suite Variable  ${test_gateway}
 
 Update IP Address
     [Documentation]  Update IP address of BMC.
