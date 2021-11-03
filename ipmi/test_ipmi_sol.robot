@@ -9,6 +9,8 @@ Library             ../lib/ipmi_utils.py
 
 Test Setup          Start SOL Console Logging
 Test Teardown       Test Teardown Execution
+Suite Setup            Suite Setup Execution
+Suite Teardown         Suite Teardown Execution
 
 Force Tags          SOL_Test
 
@@ -279,3 +281,11 @@ Test Teardown Execution
     ${sol_log}=  Stop SOL Console Logging
     Log   ${sol_log}
     FFDC On Test Case Fail
+
+Suite Setup Execution
+    [Documentation]  Suite Setup Execution.
+    Redfish.Login
+
+Suite Teardown Execution
+    [Documentation]  Suite Teardown Execution.
+    Redfish.Logout
