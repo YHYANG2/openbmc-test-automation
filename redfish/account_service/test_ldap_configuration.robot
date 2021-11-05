@@ -238,28 +238,6 @@ Update LDAP Group Name And Verify Operations
     [Teardown]  Restore LDAP Privilege
 
     # group_name             group_privilege  valid_status_codes
-    ${GROUP_NAME}            group_privilege=Administrator
-    ...  valid_status_codes=[${HTTP_OK},${HTTP_NO_CONTENT}]
-    ${GROUP_NAME}            group_privilege=Operator
-    ...  valid_status_codes=[${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
-    #${GROUP_NAME}            User             [${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
-    ${GROUP_NAME}            group_privilege=ReadOnly
-    ...  valid_status_codes=[${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
-    #${GROUP_NAME}            group_privilege=Callback
-    ${GROUP_NAME}            group_privilege=NoAccess
-    ...  valid_status_codes=[${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
-    #...  extra_status_codes=[${HTTP_INTERNAL_SERVER_ERROR}]
-    Invalid_LDAP_Group_Name  group_privilege=Administrator
-    ...  valid_status_codes=[${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
-    Invalid_LDAP_Group_Name  group_privilege=Operator
-    ...  valid_status_codes=[${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
-    #Invalid_LDAP_Group_Name  User             [${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
-    Invalid_LDAP_Group_Name  group_privilege=ReadOnly
-    ...  valid_status_codes=[${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
-    #Invalid_LDAP_Group_Name  group_privilege=Callback
-    Invalid_LDAP_Group_Name  group_privilege=NoAccess
-    ...  valid_status_codes=[${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
-    #...  extra_status_codes=[${HTTP_INTERNAL_SERVER_ERROR}]
     ${GROUP_NAME}            Administrator    [${HTTP_OK}, ${HTTP_NO_CONTENT}]
     ${GROUP_NAME}            Operator         [${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
     ${GROUP_NAME}            ReadOnly         [${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
@@ -332,7 +310,6 @@ Verify Authorization With Null Privilege
 
     Update LDAP Config And Verify Set Host Name  Invalid_LDAP_Group_Name  ${EMPTY}
     ...  [${HTTP_FORBIDDEN}]
-    #...  extra_status_codes=[${HTTP_INTERNAL_SERVER_ERROR}]
 
 
 Verify Authorization With Invalid Privilege
@@ -345,7 +322,6 @@ Verify Authorization With Invalid Privilege
 
     Update LDAP Config And Verify Set Host Name  Invalid_LDAP_Group_Name
     ...  Invalid_Privilege  [${HTTP_FORBIDDEN}]
-    ...  extra_status_codes=[${HTTP_INTERNAL_SERVER_ERROR}]
 
 
 Verify LDAP Login With Invalid Data
@@ -585,7 +561,6 @@ Update LDAP Config And Verify Set NTP
     [Documentation]  Update LDAP config and verify by attempting to set NTP.
     [Arguments]  ${group_name}  ${group_privilege}=Administrator
     ...  ${valid_status_codes}=[${HTTP_OK}]
-    ...  ${extra_status_codes}=[${HTTP_OK}]
 
     # Description of argument(s):
     # group_name                    The group name of user.
@@ -602,7 +577,6 @@ Update LDAP Config And Verify Set NTP
     ${ldap_data}=  Create Dictionary  RemoteRoleMapping=${remote_role_mapping}
     ${payload}=  Create Dictionary  ${ldap_type}=${ldap_data}
     Redfish.Patch  ${REDFISH_BASE_URI}AccountService  body=&{payload}
-    ...  valid_status_codes=${extra_status_codes}
     # Provide adequate time for LDAP daemon to restart after the update.
     Sleep  15s
     #
@@ -615,7 +589,8 @@ Update LDAP Config And Verify Set NTP
     ...  ELSE
     ...    Redfish.Patch  ${REDFISH_NW_PROTOCOL_URI}  body={'NTP':{'ProtocolEnabled': ${False}}}
     ...    valid_status_codes=${valid_status_codes}
-    Redfish.Logout
+    # Avoid some user privilege cannot logout
+    Run Keyword And Ignore Error  Redfish.Logout
     Redfish.Login
 
 
@@ -623,7 +598,6 @@ Update LDAP Config And Verify Set Host Name
     [Documentation]  Update LDAP config and verify by attempting to set host name.
     [Arguments]  ${group_name}  ${group_privilege}=Administrator
     ...  ${valid_status_codes}=[${HTTP_OK}]
-    ...  ${extra_status_codes}=[${HTTP_OK}]
 
     # Description of argument(s):
     # group_name                    The group name of user.
@@ -640,7 +614,6 @@ Update LDAP Config And Verify Set Host Name
     ${ldap_data}=  Create Dictionary  RemoteRoleMapping=${remote_role_mapping}
     ${payload}=  Create Dictionary  ${ldap_type}=${ldap_data}
     Redfish.Patch  ${REDFISH_BASE_URI}AccountService  body=&{payload}
-    ...  valid_status_codes=${extra_status_codes}
     # Provide adequate time for LDAP daemon to restart after the update.
     Sleep  15s
     #
@@ -649,7 +622,7 @@ Update LDAP Config And Verify Set Host Name
     # allowed to change the hostname.
     Redfish.Patch  ${REDFISH_NW_ETH0_URI}  body={'HostName': '${hostname}'}
     ...  valid_status_codes=${valid_status_codes}
-    Redfish.Logout
+    Run Keyword And Ignore Error  Redfish.Logout
     Redfish.Login
 
 
@@ -731,6 +704,16 @@ Restore AccountLockout Attributes
     ...  body=[('AccountLockoutDuration', ${old_account_service['AccountLockoutThreshold']})]
 
 
+Set Olympus LDAP Privilege
+    [Documentation]  set a workable privilege for Olympus before test
+
+    ${body}=  Catenate  {'${LDAP_TYPE}':
+    ...    {'RemoteRoleMapping':
+    ...          [{'LocalRole':'Administrator',
+    ...            'RemoteGroup':'priv-admin'}]}}
+    Redfish.Patch  ${REDFISH_BASE_URI}AccountService  body=${body}
+
+
 Suite Setup Execution
     [Documentation]  Do suite setup tasks.
 
@@ -747,6 +730,7 @@ Suite Setup Execution
     Redfish.Login
     # Call 'Get LDAP Configuration' to verify that LDAP configuration exists.
     Get LDAP Configuration  ${LDAP_TYPE}
+    Set Olympus LDAP Privilege
     ${old_ldap_privilege}=  Get LDAP Privilege
     Set Suite Variable  ${old_ldap_privilege}
     Disable Other LDAP
