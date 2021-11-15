@@ -5,6 +5,10 @@ Variables      ../data/variables.py
 Resource       ../lib/utils.robot
 Resource       ../lib/connection_client.robot
 
+*** Variables ***
+${functional_cpu_count}       ${0}
+${active_occ_count}           ${0}
+
 *** Keywords ***
 
 Get OCC Objects
@@ -26,14 +30,21 @@ Get OCC Objects
 
 Get OCC Active State
     [Documentation]  Get the OCC "OccActive" and return the attribute value.
-    [Arguments]  ${occ_object}
+    [Arguments]  ${value}
 
     # Description of argument(s):
-    # occ_object   OCC object path.
-    #             (e.g. "/org/open_power/control/occ0").
+    # value       CPU position (e.g. "0, 1, 2").
 
-    ${occ_attribute}=  Read Attribute  ${occ_object}  OccActive
-    [Return]  ${occ_attribute}
+    ${cmd}=  Catenate  busctl get-property org.open_power.OCC.Control
+    ...   /org/open_power/control/occ${value} org.open_power.OCC.Status OccActive
+
+    ${cmd_output}  ${stderr}  ${rc} =  BMC Execute Command  ${cmd}
+    ...  print_out=1  print_err=1  ignore_err=1
+
+    # The command returns format  'b true'
+    Return From Keyword If  '${cmd_output.split(' ')[-1]}' == 'true'  ${1}
+
+    [Return]  ${0}
 
 
 Count Object Entries
@@ -67,6 +78,49 @@ Read Object Attribute
     [Return]  ${content["data"]}
 
 
+Get Functional Processor Count
+    [Documentation]  Get functional processor count.
+
+    ${cpu_list}=  Redfish.Get Members List  /redfish/v1/Systems/system/Processors/  *cpu*
+
+    FOR  ${endpoint_path}  IN  @{cpu_list}
+       # {'Health': 'OK', 'State': 'Enabled'} get only matching status good.
+       ${cpu_status}=  Redfish.Get Attribute  ${endpoint_path}  Status
+       Continue For Loop If  '${cpu_status['Health']}' != 'OK' or '${cpu_status['State']}' != 'Enabled'
+       ${functional_cpu_count} =  Evaluate   ${functional_cpu_count} + 1
+    END
+
+    [Return]  ${functional_cpu_count}
+
+
+Get Active OCC State Count
+    [Documentation]  Get active OCC state count.
+
+    ${cpu_list}=  Redfish.Get Members List  /redfish/v1/Systems/system/Processors/  *cpu*
+
+    FOR  ${endpoint_path}  IN  @{cpu_list}
+       ${num}=  Set Variable  ${endpoint_path[-1]}
+       ${cmd}=  Catenate  busctl get-property org.open_power.OCC.Control
+       ...   /org/open_power/control/occ${num} org.open_power.OCC.Status OccActive
+
+       ${cmd_output}  ${stderr}  ${rc} =  BMC Execute Command  ${cmd}
+       ...  print_out=1  print_err=1  ignore_err=1
+
+       # The command returns format  'b true'
+       Continue For Loop If   '${cmd_output.split(' ')[-1]}' != 'true'
+       ${active_occ_count} =  Evaluate   ${active_occ_count} + 1
+    END
+
+    [Return]  ${active_occ_count}
+
+
+Match OCC And CPU State Count
+    ${cpu_count}=  Get Functional Processor Count
+    ${occ_count}=  Get Active OCC State Count
+    Should Be Equal  ${occ_count}  ${cpu_count}
+    ...  msg=OCC count ${occ_count} and CPU Count ${cpu_count} mismatched.
+
+
 Verify OCC State
     [Documentation]  Check OCC active state.
     [Arguments]  ${expected_occ_active}=${1}
@@ -85,7 +139,7 @@ Verify OCC State
        Continue For Loop If  '${cpu_status['Health']}' != 'OK' or '${cpu_status['State']}' != 'Enabled'
        Log To Console  ${cpu_status}
        ${num}=  Set Variable  ${endpoint_path[-1]}
-       ${occ_active}=  Get OCC Active State  ${OPENPOWER_CONTROL}occ${num}
+       ${occ_active}=  Get OCC Active State  ${num}
        Should Be Equal  ${occ_active}  ${expected_occ_active}
        ...  msg=OCC not in right state
     END

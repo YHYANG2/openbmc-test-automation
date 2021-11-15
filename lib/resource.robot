@@ -30,8 +30,11 @@ ${OPENBMC_USERNAME}    root
 ${OPENBMC_PASSWORD}    0penBmc
 ${REST_USERNAME}       root
 ${REST_PASSWORD}       0penBmc
+${OPENBMC_ADMIN_PASSWORD}  0penBmc
+${SERVICE_USER_PASSWORD}   0penBmc
 
 ${CHASSIS_ID}  chassis
+${COMPONENT_NAME_OF_POWER_SUPPLY}  powersupply
 
 # MTLS_ENABLED indicates whether mTLS is enabled.
 ${MTLS_ENABLED}        False
@@ -90,6 +93,10 @@ ${RESET_PACKETS}           RST
 ${FIN_PACKETS}             FIN
 ${SYN_ACK_RESET}           SAR
 ${ALL_FLAGS}               ALL
+# Used to set BMC static IPv4 configuration.
+${STATIC_IP}            10.10.10.10
+${NETMASK}              255.255.255.0
+${GATEWAY}              10.10.10.10
 
 # BMC debug tarball parameter
 ${DEBUG_TARBALL_PATH}  ${EMPTY}

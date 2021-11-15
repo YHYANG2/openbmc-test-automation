@@ -3,10 +3,11 @@
 Documentation    Module to test IPMI chassis functionality.
 Resource         ../lib/ipmi_client.robot
 Resource         ../lib/openbmc_ffdc.robot
+Resource         ../lib/boot_utils.robot
 Library          ../lib/ipmi_utils.py
 
-Suite Setup            Suite Setup Execution
-Suite Teardown         Suite Teardown Execution
+Suite Setup      Redfish.Login
+Suite Teardown   Redfish.Logout
 Test Teardown    FFDC On Test Case Fail
 
 *** Test Cases ***
@@ -50,7 +51,7 @@ Verify Host PowerOn Via IPMI
 
 Verify Soft Shutdown
     [Documentation]  Verify host OS shutdown softly via IPMI command.
-    [Tags]  Verify_Soft_Stutdown
+    [Tags]  Verify_Soft_Shutdown
 
     Redfish Power On  stack_mode=skip
     Run IPMI Standard Command  chassis power soft
@@ -90,11 +91,3 @@ Test Setup Execution
 
     ${chassis_status}=  Get Chassis Status
     Set Test Variable  ${initial_power_policy}  ${chassis_status['power_restore_policy']}
-
-Suite Setup Execution
-    [Documentation]  Suite Setup Execution.
-    Redfish.Login
-
-Suite Teardown Execution
-    [Documentation]  Suite Teardown Execution.
-    Redfish.Logout

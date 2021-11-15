@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 r"""
 This module is the python counterpart to obmc_boot_test.
@@ -63,9 +63,14 @@ base_tool_dir_path = os.path.normpath(os.environ.get(
 
 ffdc_dir_path = os.path.normpath(os.environ.get('FFDC_DIR_PATH', '')) + os.sep
 boot_success = 0
-status_dir_path = os.environ.get('STATUS_DIR_PATH', "")
+
+status_dir_path = os.environ.get('STATUS_DIR_PATH', "") or \
+    BuiltIn().get_variable_value("${STATUS_DIR_PATH}", default="")
 if status_dir_path != "":
     status_dir_path = os.path.normpath(status_dir_path) + os.sep
+    # For plugin expecting env gen_call_robot.py
+    os.environ['STATUS_DIR_PATH'] = status_dir_path
+
 redfish_support_trans_state = int(os.environ.get('REDFISH_SUPPORT_TRANS_STATE', 0)) or \
     int(BuiltIn().get_variable_value("${REDFISH_SUPPORT_TRANS_STATE}", default=0))
 redfish_supported = BuiltIn().get_variable_value("${REDFISH_SUPPORTED}", default=False)
@@ -976,9 +981,13 @@ def test_loop_body():
 
     if delete_errlogs:
         # print error logs before delete
-        status, error_logs = grk.run_key_u("Get Error Logs")
+        if redfish_support_trans_state:
+            status, error_logs = grk.run_key_u("Get Redfish Event Logs")
+            log.print_error_logs(error_logs, "AdditionalDataURI Message Severity")
+        else:
+            status, error_logs = grk.run_key_u("Get Error Logs")
+            log.print_error_logs(error_logs, "AdditionalData Message Severity")
         pels = pel.peltool("-l", ignore_err=1)
-        log.print_error_logs(error_logs, "AdditionalData Message Severity")
         gp.qprint_var(pels)
 
         # We need to purge error logs between boots or they build up.
@@ -1166,9 +1175,13 @@ def obmc_boot_test_py(loc_boot_stack=None,
 
     if delete_errlogs:
         # print error logs before delete
-        status, error_logs = grk.run_key_u("Get Error Logs")
+        if redfish_support_trans_state:
+            status, error_logs = grk.run_key_u("Get Redfish Event Logs")
+            log.print_error_logs(error_logs, "AdditionalDataURI Message Severity")
+        else:
+            status, error_logs = grk.run_key_u("Get Error Logs")
+            log.print_error_logs(error_logs, "AdditionalData Message Severity")
         pels = pel.peltool("-l", ignore_err=1)
-        log.print_error_logs(error_logs, "AdditionalData Message Severity")
         gp.qprint_var(pels)
 
         # Delete errlogs prior to doing any boot tests.

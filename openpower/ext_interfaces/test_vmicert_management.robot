@@ -72,8 +72,8 @@ Send CSR Request When VMI Is Off And Verify
     [Teardown]  Run keywords  Redfish Power On  stack_mode=skip  AND  FFDC On Test Case Fail
     [Template]  Get Certificate Signed By VMI
 
-    # username           password             force_create  valid_csr  valid_status_code
-    ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}  ${True}       ${True}    ${HTTP_INTERNAL_SERVER_ERROR}
+    # username           password             force_create  valid_csr  valid_status_code         read_timeout
+    ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}  ${True}       ${True}    ${HTTP_SERVICE_UNAVAILABLE}   60
 
     # Send CSR request from operator user.
     operator_user        TestPwd123           ${False}      ${True}    ${HTTP_FORBIDDEN}
@@ -89,8 +89,8 @@ Get Corrupted CSR Request Signed By VMI And Verify
     [Tags]  Get_Corrupted_CSR_Request_Signed_By_VMI_And_Verify
     [Template]  Get Certificate Signed By VMI
 
-    # username           password             force_create  valid_csr   valid_status_code
-    ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}  ${True}       ${False}    ${HTTP_INTERNAL_SERVER_ERROR}
+    # username           password             force_create  valid_csr   valid_status_code        read_timeout
+    ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}  ${True}       ${False}    ${HTTP_SERVICE_UNAVAILABLE}    60
 
     # Send CSR request from operator user.
     operator_user        TestPwd123           ${False}      ${False}    ${HTTP_FORBIDDEN}
@@ -501,6 +501,37 @@ Send CSR Request And Corrupted CSR Requests From Non Admin Users Concurrently An
         ...  msg=One or more operations has failed.
     END
 
+Get Root Certificate And Send CSR Requests From Admin And Operator Concurrently And Verify
+    [Documentation]  Get root certificate from admin and send csr requests
+    ...  from admin and operator concurrently and verify gets root certificate
+    ...  and signed certificate and gets error for operator.
+    [Tags]  Get_Root_Certificate_And_Send_CSR_Requests_From_Admin_And_Operator_Concurrently_And_Verify
+
+    FOR  ${i}  IN RANGE  ${5}
+        ${dict}=  Execute Process Multi Keyword  ${5}
+        ...  Get Root Certificate ${OPENBMC_USERNAME} ${OPENBMC_PASSWORD} ${True} ${True} ${HTTP_OK}
+        ...  Get Certificate Signed By VMI ${OPENBMC_USERNAME} ${OPENBMC_PASSWORD} ${True} ${True} ${HTTP_OK}
+        ...  Get Certificate Signed By VMI operator_user TestPwd123 ${True} ${True} ${HTTP_FORBIDDEN}
+        Dictionary Should Not Contain Value  ${dict}  False
+        ...  msg=One or more operations has failed.
+    END
+
+
+Get Root Certificate And Send Corrupted CSR Requests From Admin And Operator Concurrently And Verify
+    [Documentation]  Get root certificate from admin and send corrupted csr requests
+    ...  from admin and operator concurrently and verify gets root certificate and errors
+    ...  for corrupted csr.
+    [Tags]  Get_Root_Certificate_And_Send_Corrupted_CSR_Requests_From_Admin_And_Operator_Concurrently_And_Verify
+
+    FOR  ${i}  IN RANGE  ${5}
+        ${dict}=  Execute Process Multi Keyword  ${5}
+        ...  Get Root Certificate ${OPENBMC_USERNAME} ${OPENBMC_PASSWORD} ${True} ${True} ${HTTP_OK}
+        ...  Get Certificate Signed By VMI ${OPENBMC_USERNAME} ${OPENBMC_PASSWORD} ${True} ${False} ${HTTP_INTERNAL_SERVER_ERROR}
+        ...  Get Certificate Signed By VMI operator_user TestPwd123 ${True} ${False} ${HTTP_FORBIDDEN}
+        Dictionary Should Not Contain Value  ${dict}  False
+        ...  msg=One or more operations has failed.
+    END
+
 *** Keywords ***
 
 Generate CSR String
@@ -526,7 +557,7 @@ Generate CSR String
 
 Send CSR To VMI And Get Signed
     [Documentation]  Upload CSR to VMI and get signed.
-    [Arguments]  ${csr}  ${force_create}  ${username}  ${password}
+    [Arguments]  ${csr}  ${force_create}  ${username}  ${password}  ${read_timeout}
 
     # Description of argument(s):
     # csr                    Certificate request from client to VMI.
@@ -547,7 +578,7 @@ Send CSR To VMI And Get Signed
     ${csr_data}=  Create Dictionary  CsrString  ${csr}
     Set To Dictionary  ${data}  data  ${csr_data}
 
-    ${resp}=  Post Request  openbmc  ${cert_uri}  &{data}  headers=${headers}
+    ${resp}=  Post Request  openbmc  ${cert_uri}  &{data}  headers=${headers}  timeout=${read_timeout}
     Log to console  ${resp.content}
 
     [Return]  ${resp}
@@ -618,6 +649,7 @@ Get Certificate Signed By VMI
     [Documentation]  Get signed certificate from VMI.
     [Arguments]  ${username}=${OPENBMC_USERNAME}  ${password}=${OPENBMC_PASSWORD}
     ...  ${force_create}=${False}  ${valid_csr}=${True}  ${valid_status_code}=${HTTP_OK}
+    ...  ${read_timeout}=20
 
     # Description of argument(s):
     # cert_type          Type of the certificate requesting. eg. root or SignCSR.
@@ -639,6 +671,7 @@ Get Certificate Signed By VMI
     ${csr_str}=  Set Variable If  ${valid_csr} == ${True}  ${CSR}  ${CORRUPTED_CSR}
 
     ${resp}=  Send CSR To VMI And Get Signed  ${csr_str}  ${force_create}  ${username}  ${password}
+    ...  ${read_timeout}
 
     Should Be Equal As Strings  ${resp.status_code}  ${valid_status_code}
     Return From Keyword If  ${resp.status_code} != ${HTTP_OK}

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 r"""
 This module contains functions having to do with machine state: get_state,
@@ -222,7 +222,8 @@ else:
     default_state = DotDict([('redfish', '1'),
                              ('chassis', 'On'),
                              ('bmc', 'Enabled'),
-                             ('boot_progress', 'SystemHardwareInitializationComplete|OSRunning'),
+                             ('boot_progress',
+                              'SystemHardwareInitializationComplete|OSBootStarted|OSRunning'),
                              ('host', 'Enabled'),
                              ('os_ping', '1'),
                              ('os_login', '1'),
@@ -239,7 +240,7 @@ else:
     os_running_match_state = DotDict([('chassis', '^On$'),
                                       ('bmc', '^Enabled$'),
                                       ('boot_progress',
-                                       'SystemHardwareInitializationComplete|OSRunning'),
+                                       'SystemHardwareInitializationComplete|OSBootStarted|OSRunning'),
                                       ('host', '^Enabled$'),
                                       ('os_ping', '^1$'),
                                       ('os_login', '^1$'),
@@ -249,7 +250,7 @@ else:
     master_os_up_match = DotDict([('chassis', '^On$'),
                                   ('bmc', '^Enabled$'),
                                   ('boot_progress',
-                                   'SystemHardwareInitializationComplete|OSRunning'),
+                                   'SystemHardwareInitializationComplete|OSBootStarted|OSRunning'),
                                   ('host', '^Enabled$')])
 
     invalid_state_match = DotDict([('redfish', '^$'),
@@ -570,12 +571,12 @@ def get_state(openbmc_host="",
         if os_host is None:
             os_host = ""
 
-    if os_username is "":
+    if os_username == "":
         os_username = BuiltIn().get_variable_value("${OS_USERNAME}")
         if os_username is None:
             os_username = ""
 
-    if os_password is "":
+    if os_password == "":
         os_password = BuiltIn().get_variable_value("${OS_PASSWORD}")
         if os_password is None:
             os_password = ""

@@ -667,19 +667,6 @@ Verify IP And Netmask On BMC
     Should Contain  ${ip_data}  ${ip_with_netmask}
     ...  msg=IP and netmask pair does not exist.
 
-Validate Hostname On BMC
-    [Documentation]  Verify that the hostname read via Redfish is the same as the
-    ...  hostname configured on system.
-    [Arguments]  ${hostname}
-
-    # Description of argument(s):
-    # hostname  A hostname value which is to be compared to the hostname
-    #           configured on system.
-
-    ${sys_hostname}=  Get BMC Hostname
-    Should Be Equal  ${sys_hostname}  ${hostname}
-    ...  ignore_case=True  msg=Hostname does not exist.
-
 Test Teardown Execution
     [Documentation]  Test teardown execution.
 
@@ -710,11 +697,8 @@ Verify CLI and Redfish Nameservers
     ${resolve_conf_nameservers}=  CLI Get Nameservers
     Rqprint Vars  redfish_nameservers  resolve_conf_nameservers
 
-    # Check that the 2 lists are equivalent.
-    ${match}=  Evaluate  set($redfish_nameservers) == set($resolve_conf_nameservers)
-    Should Be True  ${match}
-    ...  The nameservers obtained via Redfish do not match those found in /etc/resolv.conf.
-
+    List Should Contain Sub List  ${resolve_conf_nameservers}  ${redfish_nameservers}
+    ...  msg=The nameservers obtained via Redfish do not match those found in /etc/resolv.conf.
 
 Configure Static Name Servers
     [Documentation]  Configure DNS server on BMC.

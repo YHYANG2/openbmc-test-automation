@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 r"""
 Provide useful error log utility keywords.
@@ -15,6 +15,10 @@ import variables as var
 from robot.libraries.BuiltIn import BuiltIn
 import gen_robot_utils as gru
 gru.my_import_resource("logging_utils.robot")
+
+
+redfish_support_trans_state = int(os.environ.get('REDFISH_SUPPORT_TRANS_STATE', 0)) or \
+    int(BuiltIn().get_variable_value("${REDFISH_SUPPORT_TRANS_STATE}", default=0))
 
 
 def print_error_logs(error_logs, key_list=None):
@@ -72,7 +76,10 @@ def print_error_logs(error_logs, key_list=None):
             key_list = key_list.split(" ")
         except AttributeError:
             pass
-        key_list.insert(0, var.BMC_LOGGING_ENTRY + ".*")
+        if redfish_support_trans_state:
+            key_list.insert(0, var.REDFISH_BMC_LOGGING_ENTRY + ".*")
+        else:
+            key_list.insert(0, var.BMC_LOGGING_ENTRY + ".*")
 
     gp.print_var(error_logs, key_list=key_list)
 

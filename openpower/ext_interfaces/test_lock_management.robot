@@ -1,22 +1,23 @@
 *** Settings ***
 
-Documentation        Test lock management feature of management console on BMC.
+Documentation           Test lock management feature of management console on BMC.
 
-Resource             ../../lib/resource.robot
-Resource             ../../lib/openbmc_ffdc.robot
-Resource             ../../lib/bmc_redfish_utils.robot
-Resource             ../../lib/external_intf/management_console_utils.robot
-Resource             ../../lib/rest_response_code.robot
-Library              ../../lib/bmc_network_utils.py
+Resource                ../../lib/resource.robot
+Resource                ../../lib/openbmc_ffdc.robot
+Resource                ../../lib/bmc_redfish_utils.robot
+Resource                ../../lib/external_intf/management_console_utils.robot
+Resource                ../../lib/rest_response_code.robot
+Library                 ../../lib/bmc_network_utils.py
 
-Suite Setup          Run Keyword And Ignore Error  Delete All Redfish Sessions
-Suite Teardown       Run Keyword And Ignore Error  Delete All Redfish Sessions
-Test Setup           Printn
-Test Teardown        FFDC On Test Case Fail
+Suite Setup              Run Keyword And Ignore Error  Delete All Redfish Sessions
+Suite Teardown           Run Keyword And Ignore Error  Delete All Redfish Sessions
+Test Setup               Printn
+Test Teardown            FFDC On Test Case Fail
 
 *** Variables ***
 
-${BAD_REQUEST}       Bad Request
+${BAD_REQUEST}           Bad Request
+&{default_trans_id}      TransactionID=${1}
 
 *** Test Cases ***
 
@@ -34,9 +35,10 @@ Acquire Read Write Lock
     HMCID-01       WriteCase3    False
 
 
-Check Lock Persistency On BMC Reboot
-    [Documentation]  Acquire lock and check after reboot it remain same.
-    [Tags]  Check_Lock_Persistency_On_BMC_Reboot
+Verify Lock Is Not Persistent On BMC Reboot
+    [Documentation]  Acquire lock and after reboot the locks are removed as no persistency
+    ...  maintained.
+    [Tags]  Verify_Lock_Is_Not_Persistent_On_BMC_Reboot
     [Template]  Acquire Lock On Resource
 
     # client_id    lock_type     reboot_flag
@@ -46,6 +48,17 @@ Check Lock Persistency On BMC Reboot
     HMCID-01       WriteCase1    True
     HMCID-01       WriteCase2    True
     HMCID-01       WriteCase3    True
+
+
+Check After Reboot Transaction ID Set To Default
+    [Documentation]  After reboot, the transaction id starts with default i.e. 1,
+    ...  if any lock is acquired.
+    [Tags]  Check_After_Reboot_Transaction_ID_Set_To_Default
+    [Template]  Verify Acquire And Release Lock In Loop
+
+    # client_id    lock_type     reboot_flag
+    HMCID-01       ReadCase1     True
+    HMCID-01       WriteCase1    True
 
 
 Acquire Read Lock On Read Lock
@@ -63,9 +76,9 @@ Fail To Acquire Lock On Another Lock
     [Template]  Verify Acquire Lock Fails On Another Lock
 
     # client_id    lock_type
-    HMCID-01       ReadCase2,WriteCase2
-    HMCID-01       WriteCase2,WriteCase2
-    HMCID-01       WriteCase2,ReadCase2
+    HMCID-01       ReadCase7,WriteCase6
+    HMCID-01       WriteCase6,WriteCase6
+    HMCID-01       WriteCase6,ReadCase7
 
 
 Acquire Lock After Reboot
@@ -392,7 +405,8 @@ Verify Redfish Session Deleted
     ${sessions}=  Redfish.Get Properties  /redfish/v1/SessionService/Sessions
 
     FOR  ${session}  IN  @{sessions['Members']}
-      Should Not Be Equal As Strings  session  ['/redfish/v1/SessionService/Sessions/${session_info["SessionIDs"]}']
+      Should Not Be Equal As Strings
+      ...  session  ['/redfish/v1/SessionService/Sessions/${session_info["SessionIDs"]}']
     END
 
 
@@ -429,7 +443,8 @@ Redfish Post Acquire Lock
     # status_code    HTTP status code.
 
     ${lock_dict_param}=  Form Data To Acquire Lock  ${lock_type}
-    ${resp}=  Redfish Post Request  /ibm/v1/HMC/LockService/Actions/LockService.AcquireLock  data=${lock_dict_param}
+    ${resp}=  Redfish Post Request
+    ...  /ibm/v1/HMC/LockService/Actions/LockService.AcquireLock  data=${lock_dict_param}
     Should Be Equal As Strings  ${resp.status_code}  ${status_code}
 
     Run Keyword If  ${status_code} == ${HTTP_BAD_REQUEST}
@@ -449,7 +464,8 @@ Redfish Post Acquire List Lock
     # status_code    HTTP status code.
 
     ${lock_dict_param}=  Create Data To Acquire List Of Lock  ${lock_type}
-    ${resp}=  Redfish Post Request  /ibm/v1/HMC/LockService/Actions/LockService.AcquireLock  data=${lock_dict_param}
+    ${resp}=  Redfish Post Request
+    ...  /ibm/v1/HMC/LockService/Actions/LockService.AcquireLock  data=${lock_dict_param}
     Should Be Equal As Strings  ${resp.status_code}  ${status_code}
 
     [Return]  ${resp}
@@ -465,7 +481,8 @@ Redfish Post Acquire Invalid Lock
     # status_code    HTTP status code.
 
     ${lock_dict_param}=  Form Data To Acquire Invalid Lock  ${lock_type}
-    ${resp}=  Redfish Post Request  /ibm/v1/HMC/LockService/Actions/LockService.AcquireLock  data=${lock_dict_param}
+    ${resp}=  Redfish Post Request
+    ...  /ibm/v1/HMC/LockService/Actions/LockService.AcquireLock  data=${lock_dict_param}
     Should Be Equal As Strings  ${resp.status_code}  ${status_code}
     Run Keyword If  '${message}' != '${EMPTY}'
     ...  Valid Value  message  ['${resp.content}']
@@ -481,8 +498,10 @@ Redfish Post Acquire Invalid Lock With Invalid Data Type Of Resource ID
     # lock_type      Read lock or Write lock.
     # status_code    HTTP status code.
 
-    ${lock_dict_param}=  Form Data To Acquire Invalid Lock With Invalid Data Type Of Resource ID  ${lock_type}
-    ${resp}=  Redfish Post Request  /ibm/v1/HMC/LockService/Actions/LockService.AcquireLock  data=${lock_dict_param}
+    ${lock_dict_param}=
+    ...  Form Data To Acquire Invalid Lock With Invalid Data Type Of Resource ID  ${lock_type}
+    ${resp}=  Redfish Post Request
+    ...  /ibm/v1/HMC/LockService/Actions/LockService.AcquireLock  data=${lock_dict_param}
     Should Be Equal As Strings  ${resp.status_code}  ${status_code}
 
     [Return]  ${resp}
@@ -610,20 +629,22 @@ Acquire Lock On Resource
     # reboot_flag  Flag is used to run reboot the BMC code.
     #               (e.g. True or False).
 
+    ${trans_id_emptylist}=  Create List
     ${trans_id_list}=  Create List
+
     ${session_info}=  Create Redfish Session With ClientID  ${client_id}
     ${trans_id}=  Redfish Post Acquire Lock  ${lock_type}
     Append To List  ${trans_id_list}  ${trans_id}
+
     Verify Lock On Resource  ${session_info}  ${trans_id_list}
 
     ${before_reboot_xauth_token}=  Set Variable  ${XAUTH_TOKEN}
 
     Run Keyword If  '${reboot_flag}' == 'True'
-    ...  Run Keywords  Redfish OBMC Reboot (off)  AND
-    ...  Redfish Login  AND
+    ...  Run Keywords  Redfish BMC Reset Operation  AND
     ...  Set Global Variable  ${XAUTH_TOKEN}  ${before_reboot_xauth_token}  AND
-    ...  Verify Lock On Resource  ${session_info}  ${trans_id_list}  AND
-    ...  Release Locks On Resource  ${session_info}  ${trans_id_list}  Transaction  ${HTTP_OK}
+    ...  Is BMC Standby  AND
+    ...  Verify Lock On Resource  ${session_info}  ${trans_id_emptylist}
 
     Run Keyword If  '${reboot_flag}' == 'False'
     ...  Release Locks On Resource  ${session_info}  ${trans_id_list}  Transaction  ${HTTP_OK}
@@ -651,7 +672,8 @@ Form Data To Release Lock
 
 Release Locks On Resource
     [Documentation]  Redfish request to release a lock.
-    [Arguments]  ${session_info}  ${trans_id_list}  ${release_lock_type}=Transaction  ${status_code}=${HTTP_OK}
+    [Arguments]  ${session_info}  ${trans_id_list}  ${release_lock_type}=Transaction
+    ...  ${status_code}=${HTTP_OK}
 
     # Description of argument(s):
     # session_info        Session information in dict.
@@ -773,10 +795,11 @@ Verify Acquire Lock After Reboot
 
     ${trans_id_list}=  Create List
     ${session_info}=  Create Session With ClientID  ${client_id}
+
     ${before_reboot_xauth_token}=  Set Variable  ${XAUTH_TOKEN}
-    Redfish OBMC Reboot (off)
-    Redfish Login
+    Redfish BMC Reset Operation
     Set Global Variable  ${XAUTH_TOKEN}  ${before_reboot_xauth_token}
+    Is BMC Standby
 
     ${trans_id}=  Redfish Post Acquire Lock  ${lock_type}
     Append To List  ${trans_id_list}  ${trans_id}
@@ -808,14 +831,36 @@ Verify Acquire Multiple Lock Request At CEC Level
     Release locks And Delete Session  ${session_info}  ${trans_id_list}
 
 
+Post Reboot Acquire Lock
+    [Documentation]  Post reboot acquire lock and verify the transaction id is 1.
+    [Arguments]  ${session_info}  ${lock_type}
+
+    # Description of argument(s):
+    # session_info     Session information.
+    # lock_type        Read lock or Write lock.
+
+    ${trans_id_list}=  Create List
+    ${trans_id_list_var}=  Create List
+    ${trans_id}=  Redfish Post Acquire Lock  ${lock_type}
+    Append To List  ${trans_id_list}  ${trans_id}
+    Append To List  ${trans_id_list_var}  ${default_trans_id}
+    Verify Lock On Resource  ${session_info}  ${trans_id_list}
+    Verify Lock On Resource  ${session_info}  ${trans_id_list_var}
+    Release Locks On Resource  ${session_info}  ${trans_id_list}  Transaction  ${HTTP_OK}
+    ${trans_id_emptylist}=  Create List
+    Verify Lock On Resource  ${session_info}  ${trans_id_emptylist}
+
+
 Verify Acquire And Release Lock In Loop
     [Documentation]  Acquire lock in loop.
-    [Arguments]  ${client_id}  ${lock_type}
+    [Arguments]  ${client_id}  ${lock_type}  ${reboot_flag}=False
 
     # Description of argument(s):
     # client_id    This client id can contain string value
     #              (e.g. 12345, "HMCID").
     # lock_type    Read lock or Write lock.
+    # reboot_flag  Flag is used to run reboot the BMC code.
+    #               (e.g. True or False).
 
     FOR  ${count}  IN RANGE  1  11
       ${trans_id_list}=  Create List
@@ -826,8 +871,17 @@ Verify Acquire And Release Lock In Loop
       Release Locks On Resource  ${session_info}  ${trans_id_list}  Transaction  ${HTTP_OK}
       ${trans_id_emptylist}=  Create List
       Verify Lock On Resource  ${session_info}  ${trans_id_emptylist}
+      Redfish Delete Session  ${session_info}
     END
 
+    ${session_info}=  Create Redfish Session With ClientID  ${client_id}
+    ${before_reboot_xauth_token}=  Set Variable  ${XAUTH_TOKEN}
+
+    Run Keyword If  '${reboot_flag}' == 'True'
+    ...  Run Keywords  Redfish BMC Reset Operation  AND
+    ...  Set Global Variable  ${XAUTH_TOKEN}  ${before_reboot_xauth_token}  AND
+    ...  Is BMC Standby  AND
+    ...  Post Reboot Acquire Lock  ${session_info}  ${lock_type}
     Redfish Delete Session  ${session_info}
 
 
@@ -1092,7 +1146,8 @@ Verify Fail To Acquire Lock For Invalid Lock Data
     # message      Return message from URI.
 
     ${session_info}=  Create Redfish Session With ClientID  ${client_id}
-    ${trans_id}=  Redfish Post Acquire Invalid Lock  ${lock_type}  message=${message}  status_code=${HTTP_BAD_REQUEST}
+    ${trans_id}=  Redfish Post Acquire Invalid Lock
+    ...  ${lock_type}  message=${message}  status_code=${HTTP_BAD_REQUEST}
     Redfish Delete Session  ${session_info}
 
 
@@ -1159,7 +1214,8 @@ Verify List Of Session Lock On Resource
     ${lock_list_resp}=  Get Locks List On Resource With Session List  ${session_id_list}
     ${lock_list}=  Set Variable  ${lock_list_resp['Records']}
 
-    FOR  ${session_id}  ${tran_id}  ${lock_record}  IN ZIP  ${session_dict_info}  ${transaction_id_list}  ${lock_list}
+    FOR  ${session_id}  ${tran_id}  ${lock_record}  IN ZIP
+    ...  ${session_dict_info}  ${transaction_id_list}  ${lock_list}
       Valid Value  session_id['SessionIDs']  ['${lock_record['SessionID']}']
       Should Be Equal As Integers  ${tran_id['TransactionID']}  ${lock_record['TransactionID']}
     END

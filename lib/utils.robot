@@ -7,6 +7,7 @@ Resource                ../lib/rest_client.robot
 Resource                ../lib/connection_client.robot
 Resource                ../lib/boot_utils.robot
 Resource                ../lib/common_utils.robot
+Resource                ../lib/bmc_redfish_utils.robot
 Library                 String
 Library                 DateTime
 Library                 Process
@@ -944,3 +945,35 @@ Match State
 
     ${current_state}=  Redfish Get States
     Dictionaries Should Be Equal  ${match_state}  ${current_state}
+
+
+Redfish Initiate Auto Reboot
+    [Documentation]  Initiate an auto reboot.
+    [Arguments]  ${interval}=2000
+
+    # Description of argument(s):
+    # interval  Value in milliseconds to set Watchdog interval
+
+    # Set auto reboot policy
+    Redfish Set Auto Reboot  RetryAttempts
+
+    Redfish Power Operation  On
+    Sleep  30s
+
+    # Set watchdog timer
+    Set Watchdog Interval Using Busctl  ${interval}
+
+
+
+Set Watchdog Interval Using Busctl
+    [Documentation]  Set Watchdog time interval.
+    [Arguments]  ${milliseconds}=1000
+
+    # Description of argument(s):
+    # milliseconds     Time interval for watchdog timer
+
+    ${cmd}=  Catenate  busctl set-property xyz.openbmc_project.Watchdog
+    ...                /xyz/openbmc_project/watchdog/host0
+    ...                xyz.openbmc_project.State.Watchdog Interval t ${milliseconds}
+    BMC Execute Command  ${cmd}
+

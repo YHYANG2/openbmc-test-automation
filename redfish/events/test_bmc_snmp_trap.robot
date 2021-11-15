@@ -14,29 +14,6 @@ Resource      ../../lib/logging_utils.robot
 Test Teardown  FFDC On Test Case Fail
 Suite Setup    Suite Setup Execution
 
-*** Variables ***
-
-${snmp_function}     SNMPTrap
-${snmp_version}      SNMPv2c
-${subscription_uri}  /redfish/v1/EventService/Subscriptions
-
-${CMD_INTERNAL_FAILURE}  busctl call xyz.openbmc_project.Logging /xyz/openbmc_project/logging
-...  xyz.openbmc_project.Logging.Create Create ssa{ss} xyz.openbmc_project.Common.Error.InternalFailure
-...  xyz.openbmc_project.Logging.Entry.Level.Error 0
-
-${CMD_FRU_CALLOUT}  busctl call xyz.openbmc_project.Logging /xyz/openbmc_project/logging
-...  xyz.openbmc_project.Logging.Create Create ssa{ss} xyz.openbmc_project.Common.Error.Timeout
-...  xyz.openbmc_project.Logging.Entry.Level.Error 2 "TIMEOUT_IN_MSEC" "5"
-...  "CALLOUT_INVENTORY_PATH" "/xyz/openbmc_project/inventory/system/chassis/motherboard"
-
-${CMD_INFORMATIONAL_ERROR}  busctl call xyz.openbmc_project.Logging /xyz/openbmc_project/logging
-...  xyz.openbmc_project.Logging.Create Create ssa{ss} xyz.openbmc_project.Common.Error.TestError2
-...  xyz.openbmc_project.Logging.Entry.Level.Informational 0
-
-${SNMP_TRAP_BMC_INTERNAL_FAILURE}  xyz.openbmc_project.Common.Error.InternalFailure
-${SNMP_TRAP_BMC_CALLOUT_ERROR}  xyz.openbmc_project.Common.Error.Timeout
-${SNMP_TRAP_BMC_INFORMATIONAL_ERROR}  xyz.openbmc_project.Common.Error.TestError2
-
 
 *** Test Cases ***
 
@@ -203,6 +180,107 @@ Configure Multiple SNMP Managers With Different Ports And Verify
     Verify SNMP Manager Configured On BMC  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
     Verify SNMP Manager Configured On BMC  ${SNMP_MGR2_IP}  ${NON_DEFAULT_PORT1}
     Verify SNMP Manager Configured On BMC  ${SNMP_MGR3_IP}  ${NON_DEFAULT_PORT2}
+
+
+Configure SNMP Manager With Out Of Range IP On BMC And Verify
+    [Documentation]  Configure SNMP Manager On BMC with out-of range IP and expect an error.
+    [Tags]  Configure_SNMP_Manager_With_Out_Of_Range_IP_On_BMC_And_Verify
+    [Teardown]  Delete SNMP Manager Via Redfish  ${out_of_range_ip}  ${SNMP_DEFAULT_PORT}
+
+    Configure SNMP Manager Via Redfish  ${out_of_range_ip}  ${SNMP_DEFAULT_PORT}  ${HTTP_BAD_REQUEST}
+
+    ${status}=  Run Keyword And Return Status
+    ...  Verify SNMP Manager Configured On BMC  ${out_of_range_ip}  ${SNMP_DEFAULT_PORT}
+
+    Should Be Equal As Strings  ${status}  False
+    ...  msg=BMC is allowing to configure out of range IP.
+
+
+Verify Persistency Of SNMP Manager And Trap On BMC Reboot
+    [Documentation]  Verify persistency of SNMP manager configuration on BMC
+    ...  and BMC is able to send trap after reboot.
+    [Tags]  Verify_Persistency_Of_SNMP_Manager_And_Trap_On_BMC_Reboot
+    [Teardown]  Delete SNMP Manager Via Redfish  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
+
+    Configure SNMP Manager Via Redfish  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}  ${HTTP_CREATED}
+
+    # Reboot BMC and check persistency SNMP manager.
+    OBMC Reboot (off)
+
+    Verify SNMP Manager Configured On BMC  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
+
+    # Check if trap is generated and sent to SNMP manager after reboot.
+    Generate Error On BMC And Verify Trap
+    ...  ${CMD_INTERNAL_FAILURE}  ${SNMP_TRAP_BMC_INTERNAL_FAILURE}
+
+
+Configure SNMP Manager With Less Octet IP And Verify
+    [Documentation]  Configure SNMP manager on BMC with less octet IP and expect an error.
+    [Tags]  Configure_SNMP_Manager_With_Less_Octet_IP_And_Verify
+    [Teardown]  Delete SNMP Manager Via Redfish  ${less_octet_ip}  ${SNMP_DEFAULT_PORT}
+
+    Configure SNMP Manager Via Redfish  ${less_octet_ip}  ${SNMP_DEFAULT_PORT}  ${HTTP_BAD_REQUEST}
+
+    ${status}=  Run Keyword And Return Status
+    ...  Verify SNMP Manager Configured On BMC  ${less_octet_ip}  ${SNMP_DEFAULT_PORT}
+
+    Should Be Equal As Strings  ${status}  False
+    ...  msg=BMC is allowing to configure less octet IP.
+
+
+Configure SNMP Manager On BMC With Negative Port And Verify
+    [Documentation]  Configure SNMP Manager On BMC with negative port and verify.
+    [Tags]  Configure_SNMP_Manager_On_BMC_With_Negative_Port_And_Verify
+
+    [Teardown]  Delete SNMP Manager Via Redfish  ${SNMP_MGR1_IP}  ${negative_port}
+
+    Configure SNMP Manager Via Redfish  ${SNMP_MGR1_IP}  ${negative_port}  ${HTTP_BAD_REQUEST}
+
+    ${status}=  Run Keyword And Return Status
+    ...  Verify SNMP Manager Configured On BMC  ${SNMP_MGR1_IP}  ${negative_port}
+
+    Should Be Equal As Strings  ${status}  False
+    ...  msg=BMC is allowing to configure negative port.
+
+
+Configure Multiple SNMP Managers On BMC And Verify Persistency On BMC Reboot
+    [Documentation]  Configure multiple SNMP Managers on BMC and verify persistency on BMC reboot.
+    [Tags]  Configure_Multiple_SNMP_Managers_On_BMC_And_Verify_Persistency_On_BMC_Reboot
+    [Teardown]  Run Keywords
+    ...  Delete SNMP Manager Via Redfish  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
+    ...  AND
+    ...  Delete SNMP Manager Via Redfish  ${SNMP_MGR2_IP}  ${SNMP_DEFAULT_PORT}
+
+    Configure SNMP Manager Via Redfish  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
+    Configure SNMP Manager Via Redfish  ${SNMP_MGR2_IP}  ${SNMP_DEFAULT_PORT}
+
+    # Reboot BMC and check persistency SNMP manager.
+    OBMC Reboot (off)
+
+    Verify SNMP Manager Configured On BMC  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
+    Verify SNMP Manager Configured On BMC  ${SNMP_MGR2_IP}  ${SNMP_DEFAULT_PORT}
+
+
+Configure Multiple SNMP Managers On BMC And Check Trap On BMC Reboot
+    [Documentation]  Configure multiple SNMP Managers on BMC and check trap on BMC reboot.
+    [Tags]  Configure_Multiple_SNMP_Managers_On_BMC_And_Check_Trap_On_BMC_Reboot
+    [Teardown]  Run Keywords
+    ...  Delete SNMP Manager Via Redfish  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
+    ...  AND
+    ...  Delete SNMP Manager Via Redfish  ${SNMP_MGR2_IP}  ${SNMP_DEFAULT_PORT}
+
+    Configure SNMP Manager Via Redfish  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
+    Configure SNMP Manager Via Redfish  ${SNMP_MGR2_IP}  ${SNMP_DEFAULT_PORT}
+
+    # Reboot BMC and check persistency SNMP manager.
+    OBMC Reboot (off)
+
+    Verify SNMP Manager Configured On BMC  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
+    Verify SNMP Manager Configured On BMC  ${SNMP_MGR2_IP}  ${SNMP_DEFAULT_PORT}
+
+    # Check if trap is generated and sent to SNMP managers after reboot.
+    Generate Error On BMC And Verify Trap
+    ...  ${CMD_INTERNAL_FAILURE}  ${SNMP_TRAP_BMC_INTERNAL_FAILURE}
 
 
 *** Keywords ***

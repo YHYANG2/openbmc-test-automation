@@ -97,6 +97,7 @@ Login GUI
 Logout GUI
     [Documentation]  Logout of OpenBMC GUI.
 
+    Click Element  ${xpath_root_button_menu}
     Click Element  ${xpath_logout_button}
     Wait Until Page Contains Element  ${xpath_login_button}
 
@@ -119,3 +120,30 @@ Set Timezone In Profile Settings Page
     Click Element  ${xpath_profile_settings}
     Click Element At Coordinates  ${xpath_default_UTC}  0  0
     Click Element  ${xpath_profile_save_button}
+
+
+Refresh GUI
+    [Documentation]  Refresh GUI via refresh button in header.
+
+    Click Element  ${xpath_refresh_button}
+    # Added delay for page to load fully after refresh.
+    Sleep  5s
+
+
+Refresh GUI And Verify Element Value
+    [Documentation]  Refresh GUI using refresh button and verify that given element contains expected value.
+    [Arguments]  ${element}  ${expected_value}
+
+    # Description of argument(s):
+    # element         Element whose value need to be checked.
+    # expected_value  Expected value of for the given element.
+
+    # Refresh GUI.
+
+    Click Element  ${xpath_refresh_button}
+
+    # Check element value and verify that it contains expected value.
+    ${element_value}=  Get Text  ${element}
+    Log  ${element_value}
+    Should Contain  ${element_value}  ${expected_value}
+

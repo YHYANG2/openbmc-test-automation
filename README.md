@@ -76,6 +76,11 @@ Installing tox:
     $ pip install -U tox
 ```
 
+Installing expect:
+```
+    $ sudo apt-get install expect (Ubuntu example)
+```
+
 ## OpenBMC Test Development ##
 
 These documents contain details on developing OpenBMC test code and debugging.
@@ -134,7 +139,9 @@ classified as follows:
 
 `xcat/`: Contains test cases for XCAT automation.
 
-`gui/`: Contains test cases for web UI and security scanning tool automation.
+`gui/`: Contains test cases for testing web-based interface built on AngularJS.
+
+`gui/gui_test/`: Contains test cases for testing web-based user interface built on Vue.js.
 
 `pldm/`: Contains test cases for platform management subsystem (base, bios, fru, platform, OEM).
 

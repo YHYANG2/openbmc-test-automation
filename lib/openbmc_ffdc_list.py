@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 r"""
 #    @file     openbmc_ffdc_list.py
 #    @brief    List for FFDC ( First failure data capture )
@@ -33,6 +33,7 @@ FFDC_BMC_CMD = {
     'APPLICATION DATA':
     {
         'BMC state': '/usr/bin/obmcutil state',
+        'bmcweb data': 'for f in `find /var/lib/bmcweb/ -name "*.json"`; do (echo $f; cat $f) done',
     },
 }
 # Add file name and corresponding command needed for BMC
@@ -55,7 +56,17 @@ FFDC_BMC_FILE = {
         'BMC_obmc_console.txt': 'cat /var/log/obmc-console.log >/tmp/BMC_obmc_console.txt 2>&1',
         'BMC_obmc_console1.txt': 'cat /var/log/obmc-console1.log >/tmp/BMC_obmc_console1.txt 2>&1',
         'PEL_logs_list.json': 'peltool -l >/tmp/PEL_logs_list.json 2>&1',
+        'PEL_logs_complete_list.json': 'peltool -l -a -f >/tmp/PEL_logs_complete_list.json 2>&1',
         'PEL_logs_display.json': 'peltool -a >/tmp/PEL_logs_display.json 2>&1',
+        'PEL_logs_complete_display.json': 'peltool -a -f -h>/tmp/PEL_logs_complete_display.json 2>&1',
+        'BMC_pldm_flight_recorder.txt': 'rm -rf /tmp/pldm_flight_recorder; killall -s SIGUSR1 pldmd;'
+        + ' sleep 5; cat /tmp/pldm_flight_recorder > /tmp/BMC_pldm_flight_recorder.txt 2>&1;',
+        'OCC_state.txt': 'for i in {0..3};'
+        + ' do (echo /org/open_power/control/occ$i;'
+        + ' busctl get-property org.open_power.OCC.Control /org/open_power/control/occ$i'
+        + ' org.open_power.OCC.Status OccActive) done > /tmp/OCC_state.txt 2>&1',
+        'bmcweb_persistent_data.json': 'cat /home/root/bmcweb_persistent_data.json'
+        + ' > /tmp/bmcweb_persistent_data.json',
     },
 }
 # Add file name and corresponding command needed for all Linux distributions
@@ -84,7 +95,7 @@ FFDC_OS_UBUNTU_FILE = {
     'OS FILES':
     {
         # File Name         Command
-        'OS_isusb.txt': '{ lsusb -t ; lsusb -v ; } >/tmp/OS_isub.txt 2>&1',
+        'OS_isusb.txt': '{ lsusb -t ; lsusb -v ; } >/tmp/OS_isusb.txt 2>&1',
         'OS_kern.txt': 'tail -n 50000 /var/log/kern.log >/tmp/OS_kern.txt 2>&1',
         'OS_authlog.txt': '{ cat /var/log/auth.log; cat /var/log/auth.log.1 ; } '
         + '>/tmp/OS_authlog.txt 2>&1',
@@ -120,6 +131,12 @@ FFDC_OS_AIX_FILE = {
     },
 }
 
+try:
+    redfish_support_trans_state = os.environ.get('REDFISH_SUPPORT_TRANS_STATE', 0) or \
+        int(BuiltIn().get_variable_value("${REDFISH_SUPPORT_TRANS_STATE}", default=0))
+except RobotNotRunningError:
+    pass
+
 OPENBMC_BASE = '/xyz/openbmc_project/'
 OPENPOWER_BASE = '/org/open_power/'
 ENUMERATE_SENSORS = OPENBMC_BASE + 'sensors/enumerate'
@@ -150,6 +167,25 @@ FFDC_GET_REQUEST = {
         'BMC_USER.txt': ENUMERATE_USER,
     },
 }
+
+# Remove the REST dictionary elements.
+if redfish_support_trans_state == 1:
+    for key in list(FFDC_GET_REQUEST):
+        del FFDC_GET_REQUEST[key]
+
+REDFISH_BASE = '/redfish/v1/'
+REDFISH_ELOG = REDFISH_BASE + 'Systems/system/LogServices/EventLog/Entries'
+REDFISH_FIRMWARE = REDFISH_BASE + 'UpdateService/FirmwareInventory'
+
+# Add file name and corresponding Get Request
+FFDC_GET_REDFISH_REQUEST = {
+    'GET REQUESTS':
+    {
+        # File Name         Command
+        'BMC_redfish_elog.txt': REDFISH_ELOG,
+    },
+}
+
 # Define your keywords in method/utils and call here
 FFDC_METHOD_CALL = {
     'BMC LOGS':
@@ -158,6 +194,7 @@ FFDC_METHOD_CALL = {
         'FFDC Generic Report': 'BMC FFDC Manifest',
         'BMC Specific Files': 'BMC FFDC Files',
         'Get Request FFDC': 'BMC FFDC Get Requests',
+        'Get Redfish Request FFDC': 'BMC FFDC Get Redfish Requests',
         'OS FFDC': 'OS FFDC Files',
         'Core Files': 'SCP Coredump Files',
         'SEL Log': 'Collect eSEL Log',
@@ -167,6 +204,9 @@ FFDC_METHOD_CALL = {
         'Dump HB Files': 'SCP Dump HB Files',
         'PEL Files': 'Collect PEL Log',
         'Redfish Log': 'Enumerate Redfish Resources',
+        'Firmware Log': 'Enumerate Redfish Resources  '
+        + ' enum_uri=/redfish/v1/UpdateService/FirmwareInventory  '
+        + ' file_enum_name=redfish_FIRMWARE_list.txt',
         'Redfish OEM Log': 'Enumerate Redfish OEM Resources',
     },
 }
@@ -218,6 +258,16 @@ class openbmc_ffdc_list():
         """
         return FFDC_GET_REQUEST[i_type].items()
 
+    def get_ffdc_get_redfish_request(self, i_type):
+        r"""
+        #######################################################################
+        #   @brief    This method returns the list from the dictionary for scp
+        #   @param    i_type: @type string: string index lookup
+        #   @return   List of key pair from the dictionary
+        #######################################################################
+        """
+        return FFDC_GET_REDFISH_REQUEST[i_type].items()
+
     def get_ffdc_cmd_index(self):
         r"""
         #######################################################################
@@ -235,6 +285,15 @@ class openbmc_ffdc_list():
         #######################################################################
         """
         return FFDC_GET_REQUEST.keys()
+
+    def get_ffdc_get_redfish_request_index(self):
+        r"""
+        #######################################################################
+        #   @brief    This method returns the list index from dictionary
+        #   @return   List of index to the dictionary
+        #######################################################################
+        """
+        return FFDC_GET_REDFISH_REQUEST.keys()
 
     def get_ffdc_file_index(self):
         r"""

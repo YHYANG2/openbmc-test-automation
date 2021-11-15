@@ -221,10 +221,10 @@ Redfish Set DateTime
 
 
 Set Time To Manual Mode
-    [Documentation]  Set date time to manual mode via REST.
+    [Documentation]  Set date time to manual mode via Redfish.
 
-    ${data}=  Create Dictionary  data=${MANUAL_MODE}
-    Write Attribute  ${TIME_MANAGER_URI}sync_method  TimeSyncMethod  data=${data}  verify=${TRUE}
+    Redfish.Patch  ${REDFISH_NW_PROTOCOL_URI}  body={'NTP':{'ProtocolEnabled': ${False}}}
+    ...  valid_status_codes=[${HTTP_OK}, ${HTTP_NO_CONTENT}]
 
 
 Restore NTP Mode
@@ -245,7 +245,6 @@ Suite Setup Execution
     Redfish.Login
     Get NTP Initial Status
     Set Time To Manual Mode
-    Set NTP state  ${FALSE}
 
 
 Suite Teardown Execution

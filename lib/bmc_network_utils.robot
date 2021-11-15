@@ -158,8 +158,13 @@ Get FW_Env MAC Address
     # Sample output of "fw_printenv | grep ethaddr"
     # ethaddr=xx:xx:xx:xx:xx:xx:xx
 
-    ${cmd_output}  ${stderr}  ${rc}=  BMC Execute Command
-    ...  /sbin/fw_printenv | grep ${ETH_INTERFACE}
+    ${active_channel_config}=  Get Active Channel Config
+    ${ethernet_interface}=  Set Variable  ${active_channel_config['${CHANNEL_NUMBER}']['name']}
+
+    ${ethernet_interface}=  Set Variable If
+    ...  "${ethernet_interface}"=="eth0"  ethaddr  eth1addr
+
+    ${cmd_output}  ${stderr}  ${rc}=  BMC Execute Command  /sbin/fw_printenv | grep ${ethernet_interface}
 
     # Split the line and return MAC address.
     # Split list data:
@@ -237,7 +242,7 @@ Get First Non Pingable IP From Subnet
     #       (e.g. "machine1" or "9.xx.xx.31").
 
     # Non-pingable IP is unused IP address in the subnet.
-    ${host_name}  ${ip_addr}=  Get Host Name IP
+    ${host_name}  ${ip_addr}=  Get Host Name IP  ${host}
 
     # Split IP address into network part and host part.
     # IP address will have 4 octets xx.xx.xx.xx.
@@ -442,10 +447,14 @@ Get Network Configuration
     #    "VLANEnable": false,
     #    "VLANId": 0
     #  }
+    [Arguments]  ${network_active_channel}=${CHANNEL_NUMBER}
 
-
+    # Description of argument(s):
+    # network_active_channel   Ethernet channel number (eg. 1 or 2)
+    
     ${active_channel_config}=  Get Active Channel Config
-    ${resp}=  Redfish.Get  ${REDFISH_NW_ETH_IFACE}${active_channel_config['${CHANNEL_NUMBER}']['name']}
+    ${resp}=  Redfish.Get
+    ...  ${REDFISH_NW_ETH_IFACE}${active_channel_config['${network_active_channel}']['name']}
 
     @{network_configurations}=  Get From Dictionary  ${resp.dict}  IPv4StaticAddresses
     [Return]  @{network_configurations}
@@ -685,3 +694,17 @@ Get BMC Default Gateway
     @{default_gw}=  Split String  ${gateway_list[0]}
 
     [Return]  ${default_gw[2]}
+
+
+Validate Hostname On BMC
+    [Documentation]  Verify that the hostname read via Redfish is the same as the
+    ...  hostname configured on system.
+    [Arguments]  ${hostname}
+
+    # Description of argument(s):
+    # hostname  A hostname value which is to be compared to the hostname
+    #           configured on system.
+
+    ${sys_hostname}=  Get BMC Hostname
+    Should Be Equal  ${sys_hostname}  ${hostname}
+    ...  ignore_case=True  msg=Hostname does not exist.

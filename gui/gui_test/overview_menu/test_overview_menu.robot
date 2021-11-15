@@ -22,6 +22,7 @@ ${view_all_event_logs}                 //*[@data-test-id='overviewEvents-button-
 ${xpath_launch_serial_over_lan}        //*[@data-test-id='overviewQuickLinks-button-solConsole']
 ${xpath_led_button}                    //*[@data-test-id='overviewQuickLinks-checkbox-serverLed']
 
+
 *** Test Cases ***
 
 Verify Existence Of All Sections In Overview Page
@@ -102,6 +103,7 @@ Verify Event Under High Priority Events Section
     Redfish Purge Event Log
     Click Element  ${xpath_refresh_button}
     Generate Test Error Log
+    Click Element  ${xpath_refresh_button}
     Wait Until Page Contains  xyz.openbmc_project.Common.Error.InternalFailure  timeout=30s
 
 
@@ -127,17 +129,14 @@ Verify Server LED Turn On
     [Documentation]  Turn on server LED via GUI and verify its status via Redfish.
     [Tags]  Verify_Server_LED_Turn_On
 
-    # Turn Off the server LED via Redfish.
+    # Turn Off the server LED via Redfish and refresh GUI.
     Redfish.Patch  /redfish/v1/Systems/system  body={"IndicatorLED":"Off"}   valid_status_codes=[200, 204]
+    Refresh GUI
 
-    # Refresh GUI.
-    Click Element  ${xpath_refresh_button}
-    Wait Until Page Contains Element  ${xpath_led_button}
-
-    # Turn on the server LED via GUI and sleep.
+    # Turn ON the LED via GUI.
     Click Element At Coordinates  ${xpath_led_button}  0  0
 
-    # Cross check that server LED on state via Redfish.
+    # Cross check that server LED ON state via Redfish.
     ${led_status}=  Redfish.Get Attribute  /redfish/v1/Systems/system  IndicatorLED
     Should Be True  '${led_status}' == 'Lit'
 
@@ -146,14 +145,11 @@ Verify Server LED Turn Off
     [Documentation]  Turn off server LED via GUI and verify its status via Redfish.
     [Tags]  Verify_Server_LED_Turn_Off
 
-    # Turn On the server LED via Redfish.
+    # Turn On the server LED via Redfish and refresh GUI.
     Redfish.Patch  /redfish/v1/Systems/system  body={"IndicatorLED":"Lit"}   valid_status_codes=[200, 204]
+    Refresh GUI
 
-    # Refresh GUI.
-    Click Element  ${xpath_refresh_button}
-    Wait Until Page Contains Element  ${xpath_led_button}
-
-    # Now turn off the LED via GUI.
+    # Turn OFF the LED via GUI.
     Click Element At Coordinates  ${xpath_led_button}  0  0
 
     # Cross check that server LED off state via Redfish.
@@ -171,6 +167,15 @@ Verify BMC Time In Overview Page
     Page Should Contain  ${converted_date}
 
 
+Verify BMC Information At Host Power Off State
+    [Documentation]  Verify that BMC information is displayed at host power off state.
+    [Tags]  Verify_BMC_Information_At_Host_Power_Off_State
+
+    Redfish Power Off  stack_mode=skip
+    ${firmware_version}=  Redfish Get BMC Version
+    Page Should Contain  ${firmware_version}
+
+
 *** Keywords ***
 
 Test Setup Execution
@@ -178,4 +183,3 @@ Test Setup Execution
 
     Click Element  ${xpath_overview_menu}
     Wait Until Page Contains Element  ${xpath_overview_page_header}
-

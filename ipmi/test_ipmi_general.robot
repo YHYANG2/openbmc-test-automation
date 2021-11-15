@@ -19,10 +19,10 @@ Verify Get DCMI Capabilities
 
     @{supported_capabilities}=  Create List
     # Supported DCMI capabilities:
-    ...  Mandatory platform capabilities
-    ...  Optional platform capabilities
+    ...  Mandatory platform capabilties
+    ...  Optional platform capabilties
     ...  Power management available
-    ...  Managebility access capabilities
+    ...  Managebility access capabilties
     ...  In-band KCS channel available
     # Mandatory platform attributes:
     ...  200 SEL entries
@@ -45,7 +45,6 @@ Verify Get DCMI Capabilities
 Test Get Self Test Results via IPMI Raw Command
     [Documentation]  Get self test results via IPMI raw command and verify the output.
     [Tags]  Test_Get_Self_Test_Results_via_IPMI
-
     ${resp}=  Run IPMI Standard Command  raw ${IPMI_RAW_CMD['Self_Test_Results']['Get'][0]}
 
     # 55h = No error. All Self Tests Passed.
@@ -76,7 +75,6 @@ Test Get Device GUID Via IPMI Raw Command
 Verify Get Channel Info via IPMI
     [Documentation]  Verify get channel info via IPMI.
     [Tags]  Verify_Get_Channel_Info_via_IPMI
-
     # Get channel info via ipmi command "ipmitool channel info [channel number]".
     # Verify channel info with files "channel_access_volatile.json", "channel_access_nv.json"
     # and "channel_config.json" in BMC.
@@ -151,7 +149,6 @@ Verify Get Channel Info via IPMI
 Test Get Channel Authentication Capabilities via IPMI
     [Documentation]  Test get channel authentication capabilities via IPMI.
     [Tags]  Test_Get_Channel_Authentication_Capabilities_via_IPMI
-
     ${channel_auth_cap}=  Get Channel Auth Capabilities  ${CHANNEL_NUMBER}
     Rprint Vars  channel_auth_cap
 
@@ -194,7 +191,6 @@ Verify Set Invalid Session Privilege Level via IPMI Raw Command
 Verify Close Session via IPMI
     [Documentation]  Verify close session via IPMI.
     [Tags]  Verify_Close_Session_Via_IPMI
-
     # The "close session command" can be tested with any out-of-band IPMI command.
     # When the session is about to close, it will execute the close session command at the end.
 
@@ -202,6 +198,42 @@ Verify Close Session via IPMI
     ${cmd_output}=  Run External IPMI Standard Command  ${cmd}
 
     Should Contain  ${cmd_output}  Closed Session
+
+
+Verify Chassis Identify via IPMI
+    [Documentation]  Set chassis identify using IPMI and verify.
+    [Tags]  Verify_Chassis_Identify_via_IPMI
+    [Setup]  Redfish.Login
+    [Teardown]  Redfish.logout
+
+    # Set to default "chassis identify" and verify that LED blinks for 15s.
+    Run IPMI Standard Command  chassis identify
+    Verify Identify LED State Via Redfish  Lit
+
+    Sleep  18s
+    Verify Identify LED State Via Redfish  Off
+
+    # Set "chassis identify" to 10s and verify that the LED blinks for 10s.
+    Run IPMI Standard Command  chassis identify 10
+    Verify Identify LED State Via Redfish  Lit
+
+    Sleep  12s
+    Verify Identify LED State Via Redfish  Off
+
+
+Verify Chassis Identify Off And Force Identify On via IPMI
+    [Documentation]  Set chassis identify to "off" and "force" using IPMI and verify.
+    [Tags]  Verify_Chassis_Identify_Off_And_Force_Identify_On_via_IPMI
+    [Setup]  Redfish.Login
+    [Teardown]  Redfish.logout
+
+    # Set the LED to "Force Identify On".
+    Run IPMI Standard Command  chassis identify force
+    Verify Identify LED State Via Redfish  Lit
+
+    # Set "chassis identify" to 0 and verify that the LED turns off.
+    Run IPMI Standard Command  chassis identify 0
+    Verify Identify LED State Via Redfish  Off
 
 
 *** Keywords ***
@@ -229,3 +261,13 @@ Set Invalid Session Privilege Level And Verify
     ${msg}=  Run Keyword And Expect Error  *  Run External IPMI Raw Command
     ...  0x06 0x3b ${privilege_level}
     Should Contain  ${msg}  Unknown  rsp=0x81
+
+
+Verify Identify LED State Via Redfish
+    [Documentation]  Verify that Redfish identify LED system with given state.
+    [Arguments]  ${expected_state}
+    # Description of argument(s):
+    # expected_led_status  Expected value of Identify LED.
+
+    ${led_value}=  Redfish.Get Attribute  /redfish/v1/Systems/system  IndicatorLED
+    Should Be True  '${led_value}' == '${expected_state}'

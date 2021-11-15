@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 r"""
 BMC redfish utility functions.
@@ -293,6 +293,7 @@ class bmc_redfish_utils(object):
                 #          '/redfish/v1/SessionService'
                 #          '/redfish/v1/Managers/bmc#/Oem'
                 if ('JsonSchemas' in resource) or ('SessionService' in resource)\
+                        or ('PostCodes' in resource) or ('Registries' in resource)\
                         or ('#' in resource):
                     continue
 
@@ -348,7 +349,11 @@ class bmc_redfish_utils(object):
                 if 'Members' == key:
                     if isinstance(value, list):
                         for memberDict in value:
-                            self.__pending_enumeration.add(memberDict['@odata.id'])
+                            if isinstance(memberDict, str):
+                                self.__pending_enumeration.add(memberDict)
+                            else:
+                                self.__pending_enumeration.add(memberDict['@odata.id'])
+
                 if '@odata.id' == key:
                     value = value.rstrip('/')
                     # Data for the given url.

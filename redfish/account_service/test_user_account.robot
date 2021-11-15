@@ -6,6 +6,8 @@ Resource         ../../lib/bmc_redfish_resource.robot
 Resource         ../../lib/openbmc_ffdc.robot
 Resource         ../../lib/bmc_redfish_utils.robot
 
+Library          SSHLibrary
+
 Test Setup       Redfish.Login
 Test Teardown    Test Teardown Execution
 
@@ -350,6 +352,26 @@ Verify Standard User Roles Defined By Redfish
     List Should Contain Sub List  ${resp.dict['AssignedPrivileges']}  ${roles_dict['readOnly_privileges']}
 
 
+Verify Error While Deleting Root User
+    [Documentation]  Verify error while deleting root user.
+    [Tags]  Verify_Error_While_Deleting_Root_User
+
+    Redfish.Delete  /redfish/v1/AccountService/Accounts/root  valid_status_codes=[${HTTP_FORBIDDEN}]
+
+
+Verify SSH Login Access With Admin User
+    [Documentation]  Verify that admin user does not have SSH login access.
+    [Tags]  Verify_SSH_Login_Access_With_Admin_User
+
+    # Create an admin User.
+    Redfish Create User  new_admin  TestPwd1  Administrator  ${True}
+
+    # Attempt SSH login with admin user.
+    SSHLibrary.Open Connection  ${OPENBMC_HOST}
+    ${status}=  Run Keyword And Return Status  SSHLibrary.Login  new_admin  TestPwd1
+    Should Be Equal  ${status}  ${False}
+
+
 *** Keywords ***
 
 Test Teardown Execution
@@ -383,9 +405,9 @@ Redfish Create User
     Redfish.Post  /redfish/v1/AccountService/Accounts/  body=&{payload}
     ...  valid_status_codes=[${HTTP_CREATED}]
 
-    # Resetting pam tally count as a workaround for issue
+    # Resetting faillock count as a workaround for issue
     # openbmc/phosphor-user-manager#4
-    ${cmd}=  Catenate  /usr/sbin/pam_tally2 -u ${username} --reset
+    ${cmd}=  Catenate  /usr/sbin/faillock --user USER --reset
     Bmc Execute Command  ${cmd}
 
     # Verify login with created user.

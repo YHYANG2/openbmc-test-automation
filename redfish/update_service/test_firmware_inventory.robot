@@ -106,6 +106,7 @@ Verify BMC Version Matches With FirmwareInventory
       Run Keyword If  '${entry}' == '${actual_count}'  Fail  BMC version not there in Firmware Inventory
     END
 
+
 Verify UpdateService Supports TransferProtocol TFTP
     [Documentation]  Verify update service supported values have TFTP protocol.
     [Tags]  Verify_UpdateService_Supports_TransferProtocol_TFTP
@@ -165,33 +166,28 @@ Verify Redfish FirmwareInventory Is Updateable
       # Example:
       # "Updateable": true,
 
+      Should Be Equal As Strings  ${resp}  True
     END
 
 
-Verify Redfish Functional Version Is Same
-    [Documentation]  Verify the redfish firmware inventory path version is same as redfish managers.
-    [Tags]  Verify_Redfish_Functional_Version_Is_Same
+Check Redfish Functional Image Version Is Same
+    [Documentation]  Verify functional image version is same as in Redfish managers.
+    [Tags]  Check_Redfish_Functional_Image_Version_Is_Same
+    [Template]  Verify Redfish Functional Image Version Is Same
 
-    # User defined state for software objects.
-    # Note: "Functional" term refers to firmware which system is currently booted with.
+    # image
+    functional_image
+    backup_image
 
-    # sw_inv_dict:
-    #   [b9101858]:
-    #     [image_type]:                 BMC update
-    #     [image_id]:                   b9101858
-    #     [functional]:                 True
-    #     [version]:                    2.8.0-dev-150-g04508dc9f
 
-    ${sw_inv_dict}=  Get Functional Firmware  BMC image
-    ${sw_inv_dict}=  Get Non Functional Firmware  ${sw_inv_dict}  True
+Check Redfish Backup Image Version Is Same
+    [Documentation]  Switch to backup image and then verify functional image version
+    ...  is same as in Redfish managers..
+    [Tags]  Check_Redfish_Backup_Image_Version_Is_Same
+    [Template]  Verify Redfish Functional Image Version Is Same
 
-    # /redfish/v1/Managers/bmc
-    # "FirmwareVersion": "2.8.0-dev-150-g04508dc9f"
-
-    ${firmware_version}=  Redfish.Get Attribute
-    ...  ${REDFISH_BASE_URI}Managers/bmc  FirmwareVersion
-
-    Should Be Equal  ${sw_inv_dict['version']}  ${firmware_version}
+    # image
+    switch_backup_image
 
 
 Verify Redfish Software Image And Firmware Inventory Are Same
@@ -220,6 +216,26 @@ Verify Redfish Software Image And Firmware Inventory Are Same
     Should Be Equal  ${num_records_sw_image}  ${num_records_sw_inv}
 
 
+Check If Firmware Image Is Same In Firmware Inventory And Redfish Read Operation
+    [Documentation]  Check the Redfish firmware inventory path is same as in
+    ...  active software image of Redfish managers and firmware inventory of update service.
+    [Tags]  Check_If_Firmware_Image_Is_Same_In_Firmware_Inventory_And_Redfish_Read_Operation
+
+    Verify Active Software Image And Firmware Inventory Is Same
+
+
+Check If Backup Firmware Image Is Same In Firmware Inventory And Redfish Read Operation
+    [Documentation]  Check the Redfish backup image firmware inventory path is same as in
+    ...  active software image of Redfish managers and firmware inventory of update service.
+    [Tags]  Check_If_Backup_Firmware_Image_Is_Same_In_Firmware_Inventory_And_Redfish_Read_Operation
+
+    Verify Active Software Image And Firmware Inventory Is Same
+    Set Backup Firmware Image As Functional
+    Verify Active Software Image And Firmware Inventory Is Same
+    Set Backup Firmware Image As Functional
+    Verify Active Software Image And Firmware Inventory Is Same
+
+
 Verify Redfish BIOS Version
     [Documentation]  Get host firmware version from system inventory.
     [Tags]  Verify_Redfish_BIOS_Version
@@ -242,3 +258,105 @@ Test Teardown Execution
 
     FFDC On Test Case Fail
     Redfish.Logout
+
+
+Verify Firmware Version Same In Firmware Inventory And Managers
+    [Documentation]  Verify the Redfish firmware inventory path version is same as Redfish managers.
+
+    # User defined state for software objects.
+    # Note: "Functional" term refers to firmware which system is currently booted with.
+
+    # sw_inv_dict:
+    #   [b9101858]:
+    #     [image_type]:                 BMC update
+    #     [image_id]:                   b9101858
+    #     [functional]:                 True
+    #     [version]:                    2.8.0-dev-150-g04508dc9f
+
+    ${sw_inv_list}=  Get Functional Firmware  BMC image
+    ${sw_inv_dict}=  Get Non Functional Firmware  ${sw_inv_list}  True
+
+    # /redfish/v1/Managers/bmc
+    # "FirmwareVersion": "2.8.0-dev-150-g04508dc9f"
+
+    ${firmware_version}=  Redfish.Get Attribute
+    ...  ${REDFISH_BASE_URI}Managers/bmc  FirmwareVersion
+
+    Should Be Equal  ${sw_inv_dict['version']}  ${firmware_version}
+
+
+Verify Firmware Version Is Not Same In Firmware Inventory And Managers
+    [Documentation]  Verify the Redfish firmware inventory path version is not same as
+    ...  Redfish managers for backup image.
+
+    # User defined state for software objects.
+    # Note: "Functional" term refers to firmware which system is currently booted with.
+
+    # sw_inv_dict:
+    #   [b9101858]:
+    #     [image_type]:                 BMC update
+    #     [image_id]:                   b9101858
+    #     [functional]:                 True
+    #     [version]:                    2.8.0-dev-150-g04508dc9f
+
+    ${sw_inv_list}=  Get Functional Firmware  BMC image
+    ${sw_inv_list}=  Get Non Functional Firmware List  ${sw_inv_list}  False
+
+    # /redfish/v1/Managers/bmc
+    # "FirmwareVersion": "2.8.0-dev-150-g04508dc9f"
+
+    ${firmware_version}=  Redfish.Get Attribute
+    ...  ${REDFISH_BASE_URI}Managers/bmc  FirmwareVersion
+
+    FOR  ${sw_inv}  IN  @{sw_inv_list}
+      Should Not Be Equal  ${sw_inv['version']}  ${firmware_version}
+    END
+
+
+Set Backup Firmware Image As Functional
+    [Documentation]  Switch to the backup firmware image to make functional.
+
+    ${state}=  Get Pre Reboot State
+    Rprint Vars  state
+
+    Switch Backup Firmware Image To Functional
+    Wait For Reboot  start_boot_seconds=${state['epoch_seconds']}
+
+
+Verify Redfish Functional Image Version Is Same
+    [Documentation]  Verify the functional image version is same as in firmware inventory and managers.
+    [Arguments]  ${image}
+
+    # Description of argument(s):
+    # image           Fucntional Image or Backup Image
+
+    Verify Firmware Version Same In Firmware Inventory And Managers
+
+    Run Keyword If  'backup_image' == '${image}'
+    ...  Verify Firmware Version Is Not Same In Firmware Inventory And Managers
+
+    Run Keyword If  'switch_backup_image' == '${image}'
+    ...  Run Keywords  Set Backup Firmware Image As Functional  AND
+    ...    Verify Firmware Version Same In Firmware Inventory And Managers  AND
+    ...    Set Backup Firmware Image As Functional  AND
+    ...    Verify Firmware Version Same In Firmware Inventory And Managers
+
+
+Verify Active Software Image And Firmware Inventory Is Same
+    [Documentation]  Verify Redfish firmware inventory path and active software image is same.
+
+    # ActiveSoftwareImage
+    # /redfish/v1/UpdateService/FirmwareInventory/632c5114
+
+    # Firmware Inventory
+    # /redfish/v1/UpdateService/FirmwareInventory
+    # /redfish/v1/UpdateService/FirmwareInventory/632c5114
+    # /redfish/v1/UpdateService/FirmwareInventory/632c5444
+
+    ${firmware_inv_path}=  Redfish.Get Properties  ${REDFISH_BASE_URI}Managers/bmc
+    ${firmware_inv_path}=  Get From Dictionary  ${firmware_inv_path}  Links
+    ${active_sw_image}=  Get From Dictionary  ${firmware_inv_path}  ActiveSoftwareImage
+    ${active_sw_image}=  Get From Dictionary  ${active_sw_image}  @odata.id
+
+    ${sw_member_list}=  Redfish_Utils.Get Member List  /redfish/v1/UpdateService/FirmwareInventory
+    List Should Contain Value  ${sw_member_list}  ${active_sw_image}

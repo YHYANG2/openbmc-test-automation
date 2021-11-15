@@ -145,6 +145,24 @@ Get Non Functional Firmware
     [Return]  ${list_inv_dict}[0]
 
 
+Get Non Functional Firmware List
+    [Documentation]  Get BMC non functional firmware details.
+    [Arguments]  ${sw_inv}  ${functional_state}
+
+    # Description of argument(s):
+    # sw_inv            This dictionary contains all the BMC firmware details.
+    # functional_state  Functional state can be either True or False.
+
+    ${list_inv}=  Create List
+
+    FOR  ${key}  IN  @{sw_inv.keys()}
+      Run Keyword If  '${sw_inv['${key}']['functional']}' == '${functional_state}'
+      ...  Append To List  ${list_inv}  ${sw_inv['${key}']}
+    END
+
+    [Return]  ${list_inv}
+
+
 Redfish Upload Image And Check Progress State
     [Documentation]  Code update with ApplyTime.
     [Arguments]  ${apply_time}  ${image_file_path}
@@ -156,8 +174,10 @@ Redfish Upload Image And Check Progress State
     ${image_id}=  Get Latest Image ID
     Rprint Vars  image_id
 
-    Wait Until Keyword Succeeds  1 min  01 sec
-    ...  Check Image Update Progress State  match_state='Disabled', 'Updating'  image_id=${image_id}
+    # We have noticed firmware inventory state Enabled quickly as soon the image
+    # is uploaded via redfish.
+    Wait Until Keyword Succeeds  2 min  05 sec
+    ...  Check Image Update Progress State  match_state='Disabled', 'Updating', 'Enabled'  image_id=${image_id}
 
     Wait Until Keyword Succeeds  8 min  10 sec
     ...  Check Image Update Progress State

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 r"""
 CLI FFDC Collector.
@@ -22,46 +22,69 @@ from ffdc_collector import FFDCCollector
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
-@click.option('-r', '--remote', envvar='OPENBMC_HOST',
-              help="Name/IP of the remote (targeting) host. [default: OPENBMC_HOST]")
-@click.option('-u', '--username', envvar='OPENBMC_USERNAME',
-              help="User on the remote host with access to FFDC files.[default: OPENBMC_USERNAME]")
-@click.option('-p', '--password', envvar='OPENBMC_PASSWORD',
-              help="Password for user on remote host. [default: OPENBMC_PASSWORD]")
-@click.option('-f', '--ffdc_config', default=abs_path + "/ffdc_config.yaml",
-              show_default=True, help="YAML Configuration file listing commands and files for FFDC.")
+@click.option('-r', '--remote',
+              help="Hostname/IP of the remote host")
+@click.option('-u', '--username',
+              help="Username of the remote host.")
+@click.option('-p', '--password',
+              help="Password of the remote host.")
+@click.option('-c', '--config', default=abs_path + "/ffdc_config.yaml",
+              show_default=True, help="YAML Configuration file for log collection.")
 @click.option('-l', '--location', default="/tmp",
-              show_default=True, help="Location to store collected FFDC data")
-@click.option('-t', '--remote_type', default="OPENBMC",
+              show_default=True, help="Location to save logs")
+@click.option('-t', '--type',
+              help="OS type of the remote (targeting) host. OPENBMC, RHEL, UBUNTU, SLES, AIX")
+@click.option('-rp', '--protocol', default="ALL",
               show_default=True,
-              help="OS type of the remote (targeting) host. OPENBMC, RHEL, UBUNTU, AIX")
-@click.option('-rp', '--remote_protocol', default="ALL",
+              help="Select protocol to communicate with remote host.")
+@click.option('-e', '--env_vars', show_default=True,
+              help="Environment variables e.g: {'var':value}")
+@click.option('-ec', '--econfig', show_default=True,
+              help="Predefine environment variables, refer en_vars_template.yaml ")
+@click.option('--log_level', default="INFO",
               show_default=True,
-              help="Select protocol (SSH, SCP, REDFISH) to communicate with remote host. \
-                    Default: all available.")
-def cli_ffdc(remote, username, password, ffdc_config, location, remote_type, remote_protocol):
+              help="Log level (CRITICAL, ERROR, WARNING, INFO, DEBUG)")
+def cli_ffdc(remote,
+             username,
+             password,
+             config,
+             location,
+             type,
+             protocol,
+             env_vars,
+             econfig,
+             log_level):
     r"""
     Stand alone CLI to generate and collect FFDC from the selected target.
     """
 
     click.echo("\n********** FFDC (First Failure Data Collection) Starts **********")
 
-    if input_options_ok(remote, username, password, ffdc_config):
-        thisFFDC = FFDCCollector(remote, username, password,
-                                 ffdc_config, location, remote_type, remote_protocol)
+    if input_options_ok(remote, username, password, config, type):
+        thisFFDC = FFDCCollector(remote,
+                                 username,
+                                 password,
+                                 config,
+                                 location,
+                                 type,
+                                 protocol,
+                                 env_vars,
+                                 econfig,
+                                 log_level)
         thisFFDC.collect_ffdc()
 
         if len(os.listdir(thisFFDC.ffdc_dir_path)) == 0:
             click.echo("\n\tFFDC Collection from " + remote + " has failed.\n\n")
         else:
             click.echo(str("\n\t" + str(len(os.listdir(thisFFDC.ffdc_dir_path)))
-                       + " files were retrieved from " + remote))
-            click.echo("\tFiles are stored in " + thisFFDC.ffdc_dir_path + "\n\n")
+                           + " files were retrieved from " + remote))
+            click.echo("\tFiles are stored in " + thisFFDC.ffdc_dir_path)
 
+        click.echo("\tTotal elapsed time " + thisFFDC.elapsed_time + "\n\n")
     click.echo("\n********** FFDC Finishes **********\n\n")
 
 
-def input_options_ok(remote, username, password, ffdc_config):
+def input_options_ok(remote, username, password, config, type):
     r"""
     Verify script options exist via CLI options or environment variables.
     """
@@ -71,20 +94,23 @@ def input_options_ok(remote, username, password, ffdc_config):
     if not remote:
         all_options_ok = False
         print("\
-        \n>>>>>\tERROR: Name/IP of the remote host is not specified in CLI options or env OPENBMC_HOST.")
+        \n\tERROR: Name/IP of the remote host is not specified in CLI options.")
     if not username:
         all_options_ok = False
         print("\
-        \n>>>>>\tERROR: User on the remote host is not specified in CLI options or env OPENBMC_USERNAME.")
+        \n\tERROR: User of the remote host is not specified in CLI options.")
     if not password:
         all_options_ok = False
         print("\
-        \n>>>>>\tERROR: Password for user on remote host is not specified in CLI options "
-              + "or env OPENBMC_PASSWORD.")
-    if not os.path.isfile(ffdc_config):
+        \n\tERROR: Password of the user remote host is not specified in CLI options.")
+    if not type:
         all_options_ok = False
         print("\
-        \n>>>>>\tERROR: Config file %s is not found.  Please verify path and filename." % ffdc_config)
+        \n\tERROR: Remote host os type is not specified in CLI options.")
+    if not os.path.isfile(config):
+        all_options_ok = False
+        print("\
+        \n\tERROR: Config file %s is not found.  Please verify path and filename." % config)
 
     return all_options_ok
 
