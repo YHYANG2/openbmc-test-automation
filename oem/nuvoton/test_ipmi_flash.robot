@@ -58,11 +58,12 @@ Test BMC Firmware Update
 
     Run Keyword  Wait For Host To Ping  ${OS_HOST}  3 mins
     Get LPC SHM Address
-    Update BMC Firmware  ${IMAGE_BMC_FILE_PATH_0}
-    Verify BMC Version  ${IMAGE_BMC_FILE_PATH_0}
+    # static.mtd.all.tar ${IMAGE_BMC_FILE_PATH_0}
+    Update BMC Firmware  ${IMAGE0_FILE_PATH}
+    Verify BMC Version   ${IMAGE0_FILE_PATH}
     Sleep  10s
-    Update BMC Firmware  ${IMAGE_BMC_FILE_PATH_1}
-    Verify BMC Version  ${IMAGE_BMC_FILE_PATH_1}
+    Update BMC Firmware  ${IMAGE1_FILE_PATH}
+    Verify BMC Version   ${IMAGE1_FILE_PATH}
 
 Test Invalid BMC Firmware Update
     [Documentation]  Test Invalid BMC firmware update over IPMI.
@@ -216,11 +217,17 @@ Update BMC Firmware
     ...  password=${OS_PASSWORD}
     scp.Put File  ${image_file_path}  ${HOST_WORK_DIR}/${image_file_path}
 
+    # untar and set image file to image-bmc when file is static.mtd.all.tar
     ${cmd}=  Catenate  tar -xf ${HOST_WORK_DIR}/${image_file_path} -C ${HOST_WORK_DIR}
-    ${output}  ${stderr}  ${rc}=  OS Execute Command  ${cmd}
+    ${match_static}  ${value}=  Run Keyword And Ignore Error
+    ...  Should Contain  ${image_file_path}   static.mtd.all
+    ${output}  ${stderr}  ${rc}=  Run Keyword And Return If  '${match_static}' == 'PASS'
+    ...  OS Execute Command  ${cmd}
+    ${image_file}=  Set Variable If  '${match_static}' == 'PASS'
+    ...    ${image-bmc}    ${image_file_path}
 
     ${cmd}=  Catenate  ${HOST_WORK_DIR}/burn_my_bmc --command update --interface ipmilpc
-    ...  --image ${HOST_WORK_DIR}/${image-bmc} --sig ${HOST_WORK_DIR}/${image-bmc-sig} --type image
+    ...  --image ${HOST_WORK_DIR}/${image_file} --sig ${HOST_WORK_DIR}/${image-bmc-sig} --type image
     ...  --address 0x${lpcshm_address} --length 0xFFC --ignore-update
 
     ${output}  ${stderr}  ${rc}=  OS Execute Command  ${cmd}  ignore_err=1

@@ -45,7 +45,8 @@ Redfish Failure to Upload BMC Image With Bad Manifest
     [Template]  Redfish Bad Firmware Update
 
     # Image File Name
-    bmc_bad_manifest.static.mtd.tar
+    #bmc_bad_manifest.static.mtd.tar
+    bmc_bad_manifest.ext4.mmc.tar
 
 
 Redfish Failure to Upload Empty BMC Image
@@ -54,7 +55,8 @@ Redfish Failure to Upload Empty BMC Image
     [Template]  Redfish Bad Firmware Update
 
     # Image File Name
-    bmc_nokernel_image.static.mtd.tar
+    #bmc_nokernel_image.static.mtd.tar
+    bmc_nokernel_image.ext4.mmc.tar
 
 
 Redfish Failure to Upload Host Image With Bad Manifest
@@ -81,7 +83,8 @@ Redfish TFTP Failure to Upload BMC Image With Bad Manifest
     [Template]  Redfish TFTP Bad Firmware Update
 
     # Image File Name
-    bmc_bad_manifest.static.mtd.tar  ${TRUE}
+    #bmc_bad_manifest.static.mtd.tar  ${TRUE}
+    bmc_bad_manifest.ext4.mmc.tar     ${TRUE}
 
 
 Redfish TFTP Failure to Upload Empty BMC Image
@@ -90,7 +93,8 @@ Redfish TFTP Failure to Upload Empty BMC Image
     [Template]  Redfish TFTP Bad Firmware Update
 
     # Image File Name
-    bmc_nokernel_image.static.mtd.tar  ${FALSE}
+    #bmc_nokernel_image.static.mtd.tar  ${FALSE}
+    bmc_nokernel_image.ext4.mmc.tar     ${FALSE}
 
 Redfish TFTP Failure to Upload Host Image With Bad Manifest
     [Documentation]  Upload a BIOS firmware with a bad MANIFEST file via TFTP.

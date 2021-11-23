@@ -140,15 +140,20 @@
 -v REDFISH_BASE_URI:/redfish/v1/
 -v DEBUG_TARBALL_PATH:debug-tarball.tar.xz
 
--v BMC_TFTP_FILE_NAME:test_1.static.mtd.tar
--v IMAGE_FILE_PATH:test_1.static.mtd.tar
--v IMAGE0_FILE_PATH:test_2.static.mtd.tar
--v IMAGE1_FILE_PATH:test_3.static.mtd.tar
--v IMAGE_UNSIGNED_FILE_PATH:bmc_bad_unsig.static.mtd.tar
+#-v BMC_TFTP_FILE_NAME:test_1.static.mtd.tar
+#-v IMAGE_FILE_PATH:test_1.static.mtd.tar
+#-v IMAGE0_FILE_PATH:test_2.static.mtd.tar
+#-v IMAGE1_FILE_PATH:test_3.static.mtd.tar
+#-v IMAGE_UNSIGNED_FILE_PATH:bmc_bad_unsig.static.mtd.tar
+-v BMC_TFTP_FILE_NAME:test_1.ext4.mmc.tar
+-v IMAGE_FILE_PATH:test_1.ext4.mmc.tar
+-v IMAGE0_FILE_PATH:test_2.ext4.mmc.tar
+-v IMAGE1_FILE_PATH:test_3.ext4.mmc.tar
+-v IMAGE_UNSIGNED_FILE_PATH:bmc_bad_unsig.ext4.mmc.tar
 -v IMAGE_HOST_FILE_PATH_0:bios6.tar
 -v IMAGE_HOST_FILE_PATH_1:bios7.tar
--v IMAGE_BMC_FILE_PATH_0:test_1.static.mtd.all.tar
--v IMAGE_BMC_FILE_PATH_1:test_2.static.mtd.all.tar
+#-v IMAGE_BMC_FILE_PATH_0:test_1.static.mtd.all.tar
+#-v IMAGE_BMC_FILE_PATH_1:test_2.static.mtd.all.tar
 -v IMAGE_MCU_FILE_PATH_0:mcu_03.tar
 -v IMAGE_MCU_FILE_PATH_1:mcu_04.tar
 -v BAD_IMAGES_DIR_PATH:./
