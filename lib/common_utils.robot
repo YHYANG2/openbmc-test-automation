@@ -823,7 +823,7 @@ Get BMC Version
 
 Get BIOS Version
     [Documentation]  Returns the BIOS version from the BMC.
-    ${cmd}=  Set Variable  grep ^VERSION_ID= /usr/share/phosphor-bmc-code-mgmt/bios-release | cut -f 2 -d '"' | cut -f 2 -d '='
+    ${cmd}=  Set Variable  grep ^VERSION_ID= /var/lib/phosphor-bmc-code-mgmt/bios-release | cut -f 2 -d '"' | cut -f 2 -d '='
     ${output}  ${stderr}  ${rc}=  BMC Execute Command  ${cmd}
     [Return]  ${output}
 
