@@ -133,6 +133,8 @@
 -e Create_Two_User_Initiated_BMC_Dumps_And_Delete_One
 -e Create_And_Delete_User_Initiated_BMC_Dump_Multiple_Times
 -e Verify_Maximum_BMC_Dump_Creation
+-e Redfish_Mcu_Code_Update_With_ApplyTime_OnReset
+-e Redfish_Mcu_Code_Update_With_ApplyTime_Immediate
 
 -v MACHINE_TYPE:olympus-nuvoton
 -v log_file_path:log.txt
