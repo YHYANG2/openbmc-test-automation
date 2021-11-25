@@ -79,7 +79,10 @@ Disable SSH Protocol And Check Persistency On BMC Reboot
     Enable SSH Protocol  ${False}
 
     # Reboot BMC and verify persistency.
-    OBMC Reboot (off)
+    # the OBMC Reboot  will check BMC status via SSH, but ssh is diabled now!
+    # OBMC Reboot (off)
+    Redfish BMC Reset Operation
+    Sleep  60s
 
     # Check if SSH is really disabled via Redfish.
     Verify SSH Protocol State  ${False}
@@ -131,7 +134,6 @@ Verify Existing SSH Session Gets Closed On Disabling SSH
 Enable IPMI Protocol And Verify
     [Documentation]  Enable IPMI protocol and verify.
     [Tags]  Enable_IPMI_Protocol_And_Verify
-    [Teardown]  Enable IPMI Protocol  ${False}
 
     Enable IPMI Protocol  ${True}
 
@@ -145,6 +147,7 @@ Enable IPMI Protocol And Verify
 Disable IPMI Protocol And Verify
     [Documentation]  Disable IPMI protocol and verify.
     [Tags]  Disable_IPMI_Protocol_And_Verify
+    [Teardown]  Enable IPMI Protocol  ${True}
 
     # Disable IPMI interface.
     Enable IPMI Protocol  ${False}
