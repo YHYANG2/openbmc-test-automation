@@ -233,6 +233,6 @@ Update BMC Firmware
     ${output}  ${stderr}  ${rc}=  OS Execute Command  ${cmd}  ignore_err=1
     Should Not Contain  ${stderr}  Exception received
 
-    Sleep  10s
+    Sleep  40s
     Check If BMC is Up  20 min  20 sec
     Wait For BMC Ready
