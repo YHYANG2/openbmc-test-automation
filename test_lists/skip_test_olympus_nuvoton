@@ -151,6 +151,7 @@
 -v IMAGE_FILE_PATH:test_1.ext4.mmc.tar
 -v IMAGE0_FILE_PATH:test_2.ext4.mmc.tar
 -v IMAGE1_FILE_PATH:test_3.ext4.mmc.tar
+-v IMAGE2_FILE_PATH:test_4.ext4.mmc.tar
 -v IMAGE_UNSIGNED_FILE_PATH:bmc_bad_unsig.ext4.mmc.tar
 -v IMAGE_HOST_FILE_PATH_0:bios6.tar
 -v IMAGE_HOST_FILE_PATH_1:bios7.tar

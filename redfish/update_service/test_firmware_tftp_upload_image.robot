@@ -53,7 +53,7 @@ ImageURI Download Install With ApplyTime OnReset Policy
     [Template]  ImageURI Download Install
 
     # policy
-    OnReset  ${IMAGE0_FILE_PATH}
+    OnReset  ${IMAGE2_FILE_PATH}
 
 ImageURI Download Install With ApplyTime Immediate Policy
     [Documentation]  Download image to BMC using ImageURI with Immediate policy and verify installation.
@@ -61,7 +61,7 @@ ImageURI Download Install With ApplyTime Immediate Policy
     [Template]  ImageURI Download Install
 
     # policy
-    Immediate  ${IMAGE1_FILE_PATH}
+    Immediate  ${IMAGE0_FILE_PATH}
 
 
 Install Same Image Two Times
@@ -82,6 +82,7 @@ Suite Setup Execution
     Valid Value  TFTP_SERVER
     Valid Value  IMAGE0_FILE_PATH
     Valid Value  IMAGE1_FILE_PATH
+    Valid Value  IMAGE2_FILE_PATH
 
 
 TFTP Download Install
@@ -100,9 +101,12 @@ TFTP Download Install
     ${install_version}=  Get Image Version From SFTP Server  ${SFTP_SERVER}  ${SFTP_USER}  ${SFTP_PATH}/${image_file_name}
 
     # Download image from TFTP server to BMC.
-    Redfish.Post  /redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate
-    ...  body={"TransferProtocol" : "TFTP", "ImageURI" : "${TFTP_SERVER}/${image_file_name}"}
-    ...  valid_status_codes=[${HTTP_OK}, ${HTTP_ACCEPTED}]
+    # use rest_client API to avoid cannot set timeout issue
+    Redfish Login
+    ${resp}=  Redfish Post Request  /redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate
+    ...  timeout=${60}
+    ...  data={"TransferProtocol" : "TFTP", "ImageURI" : "${TFTP_SERVER}/${image_file_name}"}
+    Valid Value  resp.status_code  [${HTTP_OK}, ${HTTP_ACCEPTED}]
 
     Sleep  120s
 
@@ -131,9 +135,11 @@ ImageURI Download Install
     ${install_version}=  Get Image Version From SFTP Server  ${SFTP_SERVER}  ${SFTP_USER}  ${SFTP_PATH}/${image_file_name}
 
     # Download image from TFTP server via ImageURI to BMC.
-    Redfish.Post  /redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate
-    ...  body={"ImageURI": "tftp://${TFTP_SERVER}/${image_file_name}"}
-    ...  valid_status_codes=[${HTTP_OK}, ${HTTP_ACCEPTED}]
+    Redfish Login
+    ${resp}=  Redfish Post Request  /redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate
+    ...  timeout=${60}
+    ...  data={"ImageURI": "tftp://${TFTP_SERVER}/${image_file_name}"}
+    Valid Value  resp.status_code  [${HTTP_OK}, ${HTTP_ACCEPTED}]
 
     Sleep  120s
 
