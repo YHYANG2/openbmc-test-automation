@@ -147,6 +147,18 @@
 -e Verify_State_Of_PowerSubsystem_PowerSupplies
 -e Verify_PowerSubsystem_Efficiency_Percent_For_PowerSupplies
 
+# redfish/managers/test_multiple_interfaces.robot
+# our Olympus test machine BMC is not support multiple ethernet
+-e Verify_Both_Interfaces_BMC_IP_Addresses_Accessible_Via_SSH
+-e Verify_Redfish_Works_On_Both_Interfaces
+-e Verify_LDAP_Login_Works_When_Eth1_IP_Is_Not_Configured
+-e Verify_SNMP_Works_When_Eth1_IP_Is_Not_Configured
+-e Disable_And_Enable_Eth0_Interface
+-e Verify_Both_Interfaces_Access_Concurrently_Via_Redfish
+-e Able_To_Access_Serial_Console_Via_Both_Network_Interfaces
+-e Verify_IPMI_Works_On_Both_Network_Interfaces
+-e Verify_Able_To_Load_Certificates_Via_Eth1_IP_Address
+
 -v MACHINE_TYPE:olympus-nuvoton
 -v log_file_path:log.txt
 -v FORCE_UPDATE:1
