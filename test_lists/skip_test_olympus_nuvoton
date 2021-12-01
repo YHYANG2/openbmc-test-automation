@@ -133,8 +133,19 @@
 -e Create_Two_User_Initiated_BMC_Dumps_And_Delete_One
 -e Create_And_Delete_User_Initiated_BMC_Dump_Multiple_Times
 -e Verify_Maximum_BMC_Dump_Creation
+
+# oem/nuvoton/test_redfish_mcu_fw_update.robot
+# MCU feature is ready, but implement to software manager is TBD
 -e Redfish_Mcu_Code_Update_With_ApplyTime_OnReset
 -e Redfish_Mcu_Code_Update_With_ApplyTime_Immediate
+
+# redfish/systems/test_powersubsystem_settings.robot
+# x86 power control is not support these features yet
+-e Verify_Current_Power_Mode_Setting
+-e Verify_Allowable_Power_Mode_Settings
+-e Verify_Allowable_Power_Mode_Settings_Switch_At_Runtime
+-e Verify_State_Of_PowerSubsystem_PowerSupplies
+-e Verify_PowerSubsystem_Efficiency_Percent_For_PowerSupplies
 
 -v MACHINE_TYPE:olympus-nuvoton
 -v log_file_path:log.txt
