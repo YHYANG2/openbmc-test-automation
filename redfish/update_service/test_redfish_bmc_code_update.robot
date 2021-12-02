@@ -58,7 +58,7 @@ Redfish Code Update With Multiple Firmware
     [Template]  Redfish Multiple Upload Image And Check Progress State
 
     # policy   image_file_path     alternate_image_file_path
-    OnReset  ${IMAGE0_FILE_PATH}  ${IMAGE_FILE_PATH}
+    OnReset  ${IMAGE2_FILE_PATH}  ${IMAGE_FILE_PATH}
 
 
 Verify If The Modified Admin Credential Is Valid Post Image Switched To Backup
@@ -103,8 +103,10 @@ Suite Setup Execution
     [Documentation]  Do the suite setup.
 
     # Checking for file existence.
+    Valid File Path  IMAGE_FILE_PATH
     Valid File Path  IMAGE0_FILE_PATH
     Valid File Path  IMAGE1_FILE_PATH
+    Valid File Path  IMAGE2_FILE_PATH
 
     Redfish.Login
     Redfish Delete All BMC Dumps

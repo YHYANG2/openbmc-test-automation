@@ -36,7 +36,7 @@ TFTP Download Install With ApplyTime OnReset Policy
     [Template]  TFTP Download Install
 
     # policy
-    OnReset  ${IMAGE0_FILE_PATH}
+    OnReset  ${IMAGE2_FILE_PATH}
 
 TFTP Download Install With ApplyTime Immediate Policy
     [Documentation]  Download image to BMC using TFTP with Immediate policy and verify installation.
@@ -44,7 +44,7 @@ TFTP Download Install With ApplyTime Immediate Policy
     [Template]  TFTP Download Install
 
     # policy
-    Immediate  ${IMAGE1_FILE_PATH}
+    Immediate  ${IMAGE0_FILE_PATH}
 
 
 ImageURI Download Install With ApplyTime OnReset Policy
@@ -53,7 +53,7 @@ ImageURI Download Install With ApplyTime OnReset Policy
     [Template]  ImageURI Download Install
 
     # policy
-    OnReset  ${IMAGE2_FILE_PATH}
+    OnReset  ${IMAGE1_FILE_PATH}
 
 ImageURI Download Install With ApplyTime Immediate Policy
     [Documentation]  Download image to BMC using ImageURI with Immediate policy and verify installation.
@@ -61,7 +61,7 @@ ImageURI Download Install With ApplyTime Immediate Policy
     [Template]  ImageURI Download Install
 
     # policy
-    Immediate  ${IMAGE0_FILE_PATH}
+    Immediate  ${IMAGE2_FILE_PATH}
 
 
 Install Same Image Two Times

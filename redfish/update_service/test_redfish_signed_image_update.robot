@@ -33,7 +33,7 @@ Redfish Signed Code Update
     [Template]  Redfish Signed Firmware Update
 
     # image_file_path
-    ${IMAGE0_FILE_PATH}
+    ${IMAGE1_FILE_PATH}
 
 
 Redfish Fail Unsigned Code Update
@@ -60,7 +60,7 @@ REST Failure When Field Mode Set To Disable
 Suite Setup Execution
     [Documentation]  Do the suite setup.
 
-    Valid File Path  IMAGE_FILE_PATH
+    Valid File Path  IMAGE1_FILE_PATH
     Valid File Path  IMAGE_UNSIGNED_FILE_PATH
     Enable Field Mode And Verify Unmount
     Redfish.Login
