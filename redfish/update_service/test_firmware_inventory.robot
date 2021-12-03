@@ -7,6 +7,7 @@ Resource         ../../lib/openbmc_ffdc.robot
 Resource         ../../lib/redfish_code_update_utils.robot
 Library          ../../lib/gen_robot_valid.py
 
+Suite Setup      Suite Setup Execution
 Test Setup       Test Setup Execution
 Test Teardown    Test Teardown Execution
 
@@ -250,6 +251,12 @@ Verify Redfish BIOS Version
 
 
 *** Keywords ***
+
+Suite Setup Execution
+    [Documentation]  Do the suite setup.
+
+    Redfish Power Off  stack_mode=skip  quiet=1
+
 
 Test Setup Execution
     [Documentation]  Do test case setup tasks.
