@@ -214,7 +214,7 @@ Update LDAP Group Name And Verify Operations
 
     # group_name             group_privilege  valid_status_codes
     ${GROUP_NAME}            Administrator    [${HTTP_OK}, ${HTTP_NO_CONTENT}]
-    ${GROUP_NAME}            Operator         [${HTTP_OK}, ${HTTP_NO_CONTENT}]
+    ${GROUP_NAME}            Operator         [${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
     ${GROUP_NAME}            ReadOnly         [${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
     ${GROUP_NAME}            NoAccess         [${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
     Invalid_LDAP_Group_Name  Administrator    [${HTTP_UNAUTHORIZED}, ${HTTP_FORBIDDEN}]
@@ -287,8 +287,10 @@ Verify Authorization With Invalid Privilege
     [Tags]  Verify_LDAP_Authorization_With_Invalid_Privilege
     [Teardown]  Restore LDAP Privilege
 
-    Update LDAP Config And Verify Set NTP  ${GROUP_NAME}
+    ${status}=  Run Keyword And Return Status
+    ...  Update LDAP Config And Verify Set NTP  ${GROUP_NAME}
     ...  Invalid_Privilege  [${HTTP_FORBIDDEN}]
+    Valid Value  status  [${False}]
 
 
 Verify LDAP Login With Invalid Data
@@ -298,9 +300,11 @@ Verify LDAP Login With Invalid Data
     [Teardown]  Run Keywords  FFDC On Test Case Fail  AND
     ...  Create LDAP Configuration
 
-    Create LDAP Configuration  ${LDAP_TYPE}  Invalid_LDAP_Server_URI
+    ${status}=  Run Keyword And Return Status  Create LDAP Configuration
+    ...  ${LDAP_TYPE}  Invalid_LDAP_Server_URI
     ...  Invalid_LDAP_BIND_DN  LDAP_BIND_DN_PASSWORD
     ...  Invalid_LDAP_BASE_DN
+    Valid Value  status  [${False}]
     Sleep  15s
     Redfish Verify LDAP Login  ${False}
 
@@ -312,8 +316,10 @@ Verify LDAP Config Creation Without BASE_DN
     [Teardown]  Run Keywords  FFDC On Test Case Fail  AND
     ...  Create LDAP Configuration
 
-    Create LDAP Configuration  ${LDAP_TYPE}  Invalid_LDAP_Server_URI
+    ${status}=  Run Keyword And Return Status  Create LDAP Configuration
+    ...  ${LDAP_TYPE}  Invalid_LDAP_Server_URI
     ...  Invalid_LDAP_BIND_DN  LDAP_BIND_DN_PASSWORD  ${EMPTY}
+    Valid Value  status  [${False}]
     Sleep  15s
     Redfish Verify LDAP Login  ${False}
 
@@ -755,6 +761,10 @@ Update LDAP User Role And Host Poweroff
     Redfish.Post  ${REDFISH_POWER_URI}
     ...  body={'ResetType': 'ForceOff'}   valid_status_codes=[${valid_status_code}]
 
+    # to avoid no access user logout error, login first
+    Run Keyword If  '${group_privilege}' == 'NoAccess'
+    ...  Redfish.Login
+
 
 Update LDAP User Role And Host Poweron
     [Documentation]  Update LDAP user role and do host poweron.
@@ -774,6 +784,10 @@ Update LDAP User Role And Host Poweron
 
     Redfish.Post  ${REDFISH_POWER_URI}
     ...  body={'ResetType': 'On'}   valid_status_codes=[${valid_status_code}]
+
+    # to avoid no access user logout error, login first
+    Run Keyword If  '${group_privilege}' == 'NoAccess'
+    ...  Redfish.Login
 
 
 Update LDAP User Role And Configure IP Address
@@ -850,6 +864,10 @@ Update LDAP User Role And Read Network Configuration
     Redfish.Login  ${LDAP_USER}  ${LDAP_USER_PASSWORD}
     Redfish.Get  ${REDFISH_NW_ETH0_URI}  valid_status_codes=[${valid_status_code}]
 
+    # to avoid no access user logout error, login first
+    Run Keyword If  '${group_privilege}' == 'NoAccess'
+    ...  Redfish.Login
+
 
 Add IP Address With NoAccess User
     [Documentation]  Add IP Address To BMC.
@@ -866,7 +884,7 @@ Add IP Address With NoAccess User
     #                     method in redfish_plus.py for details.
 
     # Logout from LDAP user.
-    Redfish.Logout
+    #Redfish.Logout
 
     # Login with local user.
     Redfish.Login
@@ -903,6 +921,9 @@ Add IP Address With NoAccess User
     Redfish.patch  ${REDFISH_NW_ETH_IFACE}${ethernet_interface}  body=&{data}
     ...  valid_status_codes=[${valid_status_codes}]
 
+    # to avoid no access user logout error, login first
+    Redfish.Login
+
 
 Delete IP Address With NoAccess User
     [Documentation]  Delete IP Address Of BMC.
@@ -915,7 +936,7 @@ Delete IP Address With NoAccess User
     #                     method in redfish_plus.py for details.
 
     # Logout from LDAP user.
-    Redfish.Logout
+    #Redfish.Logout
 
     # Login with local user.
     Redfish.Login
@@ -952,3 +973,6 @@ Delete IP Address With NoAccess User
     # Note: Network restart takes around 15-18s after patch request processing
     Sleep  ${NETWORK_TIMEOUT}s
     Wait For Host To Ping  ${OPENBMC_HOST}  ${NETWORK_TIMEOUT}
+
+    # to avoid no access user logout error, login first
+    Redfish.Login
