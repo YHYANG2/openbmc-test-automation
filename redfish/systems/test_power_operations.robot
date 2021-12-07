@@ -12,7 +12,7 @@ Test Teardown    Test Teardown Execution
 
 # Extended code to check OCC state, power metric and others.
 ${additional_power_check}      ${1}
-${additional_occ_check}        ${1}
+${additional_occ_check}        ${0}
 
 *** Test Cases ***
 
