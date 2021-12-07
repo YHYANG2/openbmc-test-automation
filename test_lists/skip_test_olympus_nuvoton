@@ -184,3 +184,4 @@
 -v IMAGE_MCU_FILE_PATH_1:mcu_04.tar
 -v BAD_IMAGES_DIR_PATH:./
 -v HOST_WORK_DIR:/home/cs20/work
+-v FRU_NAME:F0B-BMC-MB
