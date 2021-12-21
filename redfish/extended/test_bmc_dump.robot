@@ -44,7 +44,7 @@ Verify Dump After Host Watchdog Error Injection
 
     Trigger Host Watchdog Error  2000  30
 
-    Wait Until Keyword Succeeds  300 sec  20 sec  Is Host Rebooted
+    Wait Until Keyword Succeeds  300 sec  20 sec  Is Chassis PowerCycled
 
     #Get dump details
     @{dump_entry_list}=  Read Properties  ${DUMP_ENTRY_URI}

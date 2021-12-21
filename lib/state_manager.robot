@@ -156,6 +156,14 @@ Is Host Rebooted
     Is Host Running
 
 
+Is Chassis PowerCycled
+    [Documentation]  Checks if Chassis powercycled.
+
+    ${chassis_trans_state}=  Get Chassis Trans State
+    Should Be Equal  ${chassis_trans_state}  PowerCycle
+    Is Host Running
+
+
 Is Chassis On
     [Documentation]  Check if chassis state is "On".
     ${power_state}=  Get Chassis Power State
@@ -212,6 +220,19 @@ Get Chassis Power State
     # quiet - Suppress REST output logging to console.
     ${state}=
     ...  Read Attribute  ${CHASSIS_STATE_URI}  CurrentPowerState
+    ...  quiet=${quiet}
+    [Return]  ${state.rsplit('.', 1)[1]}
+
+
+Get Chassis Trans State
+    [Documentation]  Return the transition state of Chassis as a string.
+    ...              e.g. On, Off, PowerCycle
+    [Arguments]  ${quiet}=${QUIET}
+    # Description of arguments:
+    # quiet  Suppress REST output logging to console.
+
+    ${state}=
+    ...  Read Attribute  ${CHASSIS_STATE_URI}  RequestedPowerTransition
     ...  quiet=${quiet}
     [Return]  ${state.rsplit('.', 1)[1]}
 
