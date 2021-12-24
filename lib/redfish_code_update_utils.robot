@@ -165,7 +165,7 @@ Get Non Functional Firmware List
 
 Redfish Upload Image And Check Progress State
     [Documentation]  Code update with ApplyTime.
-    [Arguments]  ${apply_time}  ${image_file_path}
+    [Arguments]  ${image_file_path}
 
     Log To Console   Start uploading image to BMC.
     Redfish Upload Image  ${REDFISH_BASE_URI}UpdateService  ${image_file_path}
@@ -228,7 +228,7 @@ Get Host Power State
     # quiet    Indicates whether results should be printed.
 
     ${state}=  Redfish.Get Attribute
-    ...  /redfish/v1/Systems/system  PowerState
+    ...  ${REDFISH_BASE_URI}Systems/system  PowerState
     Rqprint Vars  state
 
     [Return]  ${state}

@@ -44,6 +44,7 @@ Redfish Code Update With ApplyTime OnReset
     # policy
     OnReset  ${IMAGE0_FILE_PATH}
 
+
 Redfish Code Update With ApplyTime Immediate
     [Documentation]  Update the firmware image with ApplyTime of Immediate.
     [Tags]  Redfish_Code_Update_With_ApplyTime_Immediate
@@ -51,6 +52,7 @@ Redfish Code Update With ApplyTime Immediate
 
     # policy
     Immediate  ${IMAGE1_FILE_PATH}
+
 
 Redfish Code Update With Multiple Firmware
     [Documentation]  Update the firmware image with ApplyTime of Immediate.
@@ -124,11 +126,10 @@ Redfish Update Firmware
     ${state}=  Get Pre Reboot State
     Rprint Vars  state
     Set ApplyTime  policy=${apply_Time}
-    Redfish Upload Image  /redfish/v1/UpdateService  ${image_file_path}
-    Reboot BMC And Verify BMC Image
-    ...  ${apply_time}  start_boot_seconds=${state['epoch_seconds']}  image_file_path=${image_file_path}
+    Redfish Upload Image And Check Progress State  ${image_file_path}
+    Run Key  ${post_code_update_actions['BMC image']['${apply_time}']}
     Redfish.Login
-    Redfish Verify BMC Version  ${IMAGE_FILE_PATH}
+    Redfish Verify BMC Version  ${image_file_path}
     Verify Get ApplyTime  ${apply_time}
 
 
@@ -151,16 +152,16 @@ Redfish Multiple Upload Image And Check Progress State
     ${image_version}=  Get Version Tar  ${IMAGE_FILE_PATH}
     Rprint Vars  image_version
     Redfish Upload Image  ${REDFISH_BASE_URI}UpdateService  ${IMAGE_FILE_PATH}
-    Sleep  60s
+    Sleep  20s
     ${image_info}=  Get Software Inventory State By Version  ${image_version}
     ${first_image_id}=  Get Image Id By Image Info  ${image_info}
     Rprint Vars  first_image_id
-    Sleep  30s
+    Sleep  10s
 
     ${image_version}=  Get Version Tar  ${ALTERNATE_IMAGE_FILE_PATH}
     Rprint Vars  image_version
     Redfish Upload Image  ${REDFISH_BASE_URI}UpdateService  ${ALTERNATE_IMAGE_FILE_PATH}
-    Sleep  60s
+    Sleep  20s
     ${image_info}=  Get Software Inventory State By Version  ${image_version}
     ${second_image_id}=  Get Image Id By Image Info  ${image_info}
     Rprint Vars  second_image_id
@@ -174,9 +175,9 @@ Redfish Multiple Upload Image And Check Progress State
     Wait Until Keyword Succeeds  8 min  20 sec
     ...  Check Image Update Progress State
     ...    match_state='Enabled'  image_id=${second_image_id}
-
-    Reboot BMC And Verify BMC Image
-    ...  ${apply_time}  start_boot_seconds=${state['epoch_seconds']}  image_file_path=${ALTERNATE_IMAGE_FILE_PATH}
+    Run Key  ${post_code_update_actions['BMC image']['${apply_time}']}
+    Redfish.Login
+    Redfish Verify BMC Version  ${ALTERNATE_IMAGE_FILE_PATH}
 
 Get Image Id By Image Info
     [Documentation]  Get image ID from image_info.
