@@ -79,12 +79,11 @@ Redfish Signed Firmware Update
     ${image_version}=  Get Version Tar  ${image_file_path}
     ${state}=  Get Pre Reboot State
     Rprint Vars  state
-    # Redfish Upload Image And Check Progress State  Immediate
-    Set ApplyTime  OnReset
-    Redfish Upload Image  /redfish/v1/UpdateService  ${image_file_path}
+    Set ApplyTime  policy=Immediate
+    Redfish Upload Image And Check Progress State  ${image_file_path}
     ${image_info}=  Get Software Inventory State By Version  ${image_version}
     Run Keyword If  'BMC image' == '${image_info["image_type"]}'
-    ...    Reboot BMC And Verify BMC Image  OnReset  start_boot_seconds=${state['epoch_seconds']}  image_file_path=${image_file_path}
+    ...    Reboot BMC And Verify BMC Image  Immediate  start_boot_seconds=${state['epoch_seconds']}  image_file_path=${image_file_path}
     ...  ELSE
     ...    Poweron Host And Verify Host Image
 
@@ -98,7 +97,7 @@ Redfish Unsigned Firmware Update
 
     Field Mode Should Be Enabled
     Set ApplyTime  policy=Immediate
-    Redfish Upload Image  /redfish/v1/UpdateService  ${image_file_path}
+    Redfish Upload Image  ${REDFISH_BASE_URI}UpdateService  ${image_file_path}
     ${image_id}=  Get Latest Image ID
     Rprint Vars  image_id
     Sleep  5s
