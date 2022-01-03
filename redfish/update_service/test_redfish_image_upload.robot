@@ -33,7 +33,7 @@ Test Teardown          Test Teardown Execution
 Force Tags  Upload_Test
 
 *** Variables ***
-${timeout}             20
+${timeout}             60
 ${QUIET}               ${1}
 ${image_id}            ${EMPTY}
 
