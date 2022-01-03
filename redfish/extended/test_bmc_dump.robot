@@ -36,8 +36,6 @@ Verify Dump After Host Watchdog Error Injection
     [Tags]  Verify_Dump_After_Host_Watchdog_Error_Injection
 
     Redfish Power On
-    Run Keyword And Ignore Error  Delete All Dumps
-    Trigger Core Dump
 
     # Enable auto reboot
     Set Auto Reboot  ${1}
