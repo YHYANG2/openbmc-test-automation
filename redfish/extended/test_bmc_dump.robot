@@ -11,6 +11,7 @@ Resource            ../../lib/state_manager.robot
 Library             ../../lib/bmc_ssh_utils.py
 
 Suite Setup         Suite Setup Execution
+Suite Teardown      Suite Teardown Execution
 Test Setup          Open Connection And Log In
 Test Teardown       Test Teardown Execution
 
@@ -100,11 +101,14 @@ Suite Setup Execution
     ...  Run Keywords  Set Suite Variable  ${DUMP_URI}  /xyz/openbmc_project/dump/  AND
     ...  Set Suite Variable  ${DUMP_ENTRY_URI}  /xyz/openbmc_project/dump/entry/
 
-
 Test Teardown Execution
     [Documentation]  Do the post test teardown.
 
     Wait Until Keyword Succeeds  3 min  15 sec  Verify No Dump In Progress
     FFDC On Test Case Fail
-    Delete All BMC Dump
     Close All Connections
+
+Suite Teardown Execution
+    [Documentation]  Do the post-suite teardown.
+
+    Delete All BMC Dump
