@@ -260,7 +260,7 @@ Set Invalid Session Privilege Level And Verify
     # Verify requested level exceeds Channel and/or User Privilege Limit.
     ${msg}=  Run Keyword And Expect Error  *  Run External IPMI Raw Command
     ...  0x06 0x3b ${privilege_level}
-    Should Contain  ${msg}  Unknown  rsp=0x81
+    Should Contain Any  ${msg}  Unknown  rsp\=0x81  rsp\=0xcc
 
 
 Verify Identify LED State Via Redfish
