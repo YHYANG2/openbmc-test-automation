@@ -131,7 +131,8 @@ def login_ssh(login_args={},
             gp.lprint_var(except_type)
             gp.lprint_varx("except_value", str(except_value))
             if except_type is paramiko.ssh_exception.SSHException and\
-                    re.match(r"No existing session", str(except_value)):
+                    (re.match(r"No existing session", str(except_value)) or\
+                    re.match(r"SSH session not active", str(except_value))):
                 continue
             else:
                 # We don't tolerate any other error so break from loop and re-raise exception.
