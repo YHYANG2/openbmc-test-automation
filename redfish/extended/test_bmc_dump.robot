@@ -41,9 +41,9 @@ Verify Dump After Host Watchdog Error Injection
     # Enable auto reboot
     Set Auto Reboot  ${1}
 
-    Trigger Host Watchdog Error  2000  30
+    Set Watchdog Interval Using Busctl  2000
 
-    Wait Until Keyword Succeeds  300 sec  20 sec  Is Chassis PowerCycled
+    Wait Until Keyword Succeeds  300 sec  20 sec  Is OS Booted
 
     #Get dump details
     @{dump_entry_list}=  Read Properties  ${DUMP_ENTRY_URI}
