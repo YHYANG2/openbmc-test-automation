@@ -122,7 +122,8 @@ OS_BOOT_MOTHERBOARD = STATE_DBUS_BASE + \
     'Boot.Progress.ProgressStages.MotherboardInit'
 
 # OperatingSystem status variables.
-OS_BOOT_COMPLETE = 'Standby'
+OS_BOOT_COMPLETE = STATE_DBUS_BASE + \
+    'OperatingSystem.Status.OSStatus.Standby'
 OS_BOOT_CDROM = STATE_DBUS_BASE + 'OperatingSystem.Status.OSStatus.CDROMBoot'
 OS_BOOT_ROM = STATE_DBUS_BASE + 'OperatingSystem.Status.OSStatus.ROMBoot'
 OS_BOOT_PXE = STATE_DBUS_BASE + 'OperatingSystem.Status.OSStatus.PXEBoot'
