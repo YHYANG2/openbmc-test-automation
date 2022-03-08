@@ -11,7 +11,7 @@ Library             ../../lib/logging_utils.py
 
 Suite Setup         Suite Setup Execution
 Suite Teardown      Suite Teardown Execution
-Test Setup          Redfish Purge Event Log
+Test Setup          Delete All Error Logs
 Test Teardown       Test Teardown Execution
 
 
