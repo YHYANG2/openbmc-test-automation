@@ -25,9 +25,9 @@ ${interface}            eth1
 ${ip}                   10.0.0.1
 ${initial_lan_config}   &{EMPTY}
 ${vlan_resource}        ${NETWORK_MANAGER}action/VLAN
+${netmask}              ${24}
 ${gateway}              10.0.0.254
 ${vlan_id_for_rest}     ${30}
-${prefix_len}           ${24}
 
 
 *** Test Cases ***
@@ -108,8 +108,9 @@ Test Disabling Of VLAN Via IPMI
 Create VLAN When LAN And VLAN Exist With IP Address Configured
    [Documentation]  Create VLAN when LAN and VLAN exist with IP address configured.
    [Tags]  Create_VLAN_When_LAN_And_VLAN_Exist_With_IP_Address_Configured
-   [Setup]  Run Keywords  Create VLAN  ${vlan_id_for_rest}  AND  Configure Network Settings On VLAN
-   ...  ${vlan_id_for_rest}  ${ip}  ${prefix_len}  ${gateway}
+   [Setup]  Run Keywords  Create VLAN  ${vlan_id_for_rest}  interface=${interface}
+   ...  AND  Configure Network Settings On VLAN  ${vlan_id_for_rest}  ${ip}
+   ...  ${netmask}  ${gateway}  interface=${interface}
 
    Create VLAN Via IPMI   ${vlan_id_for_ipmi}
 
