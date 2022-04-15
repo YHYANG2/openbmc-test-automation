@@ -11,7 +11,7 @@ Library             ../../lib/logging_utils.py
 
 Suite Setup         Suite Setup Execution
 Suite Teardown      Suite Teardown Execution
-Test Setup          Delete All Error Logs
+Test Setup          Redfish Purge Event Log
 Test Teardown       Test Teardown Execution
 
 
@@ -61,7 +61,7 @@ Get Thermal Records and Verify
     ...  Rprint Vars  num_invalid_records  invalid_records
     Valid Value   num_invalid_records  valid_values=[0]
 
-    Error Logs Should Not Exist
+    Event Log Should Not Exist
 
 
 Suite Teardown Execution
@@ -76,7 +76,6 @@ Suite Setup Execution
     Printn
     Redfish.Login
     Redfish Purge Event Log
-    Delete Error Logs
 
 
 Test Teardown Execution
