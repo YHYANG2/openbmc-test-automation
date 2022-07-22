@@ -8,6 +8,7 @@ Resource                ../lib/connection_client.robot
 Resource                ../lib/boot_utils.robot
 Resource                ../lib/common_utils.robot
 Resource                ../lib/bmc_redfish_utils.robot
+Resource                ../lib/ipmi_client.robot
 Library                 String
 Library                 DateTime
 Library                 Process
@@ -22,6 +23,7 @@ Library                 utils.py
 Library                 var_funcs.py
 Library                 SCPLibrary  WITH NAME  scp
 Library                 gen_robot_valid.py
+Library                 pldm_utils.py
 
 
 *** Variables ***
@@ -375,7 +377,6 @@ Redfish Get Power Restore Policy
     ${power_restore_policy}=  Redfish.Get Attribute  /redfish/v1/Systems/system  PowerRestorePolicy
     [Return]  ${power_restore_policy}
 
-
 Get Auto Reboot
     [Documentation]  Returns auto reboot setting.
     ${setting}=  Read Attribute  ${CONTROL_HOST_URI}/auto_reboot  AutoReboot
@@ -486,8 +487,8 @@ Create OS Console File Path
     ...  ${TEST_NAME}
 
     ${default_file_path}=  Set Variable If  ${status} == ${TRUE}
-    ...  /tmp/${OPENBMC_HOST}_${TEST_NAME.replace(' ', '')}_os_console.txt
-    ...  /tmp/${OPENBMC_HOST}_os_console.txt
+    ...  ${EXECDIR}${/}tmp${/}${OPENBMC_HOST}_${TEST_NAME.replace(' ', '')}_os_console.txt
+    ...  ${EXECDIR}${/}tmp${/}${OPENBMC_HOST}_os_console.txt
 
     ${log_file_path}=  Set Variable If  '${log_file_path}' == '${EMPTY}'
     ...  ${default_file_path}  ${log_file_path}
@@ -692,6 +693,21 @@ Redfish Set Power Restore Policy
 
     Redfish.Patch  /redfish/v1/Systems/system  body={"PowerRestorePolicy": "${power_restore_policy}"}
     ...  valid_status_codes=[${HTTP_OK}, ${HTTP_NO_CONTENT}]
+
+
+IPMI Set Power Restore Policy
+    [Documentation]   Set the BMC power restore policy using IPMI.
+    [Arguments]   ${power_restore_policy}=always-off
+
+    # Description of argument(s):
+    # power_restore_policy    Power restore policies
+    #                         always-on   : turn on when power is restored
+    #                         previous    : return to previous state when power is restored
+    #                         always-off  : stay off after power is restored
+
+    ${resp}=  Run IPMI Standard Command  chassis policy ${power_restore_policy}
+    # Example:  Set chassis power restore policy to always-off
+    Should Contain  ${resp}  ${power_restore_policy}
 
 
 Set Auto Reboot Setting
@@ -931,9 +947,12 @@ Is BMC Standby
     ...  host=Disabled
     ...  boot_progress=None
 
+    Run Keyword If  '${PLATFORM_ARCH_TYPE}' == 'x86'
+    ...  Set To Dictionary  ${standby_states}  boot_progress=NA
+
     Wait Until Keyword Succeeds  3 min  10 sec  Redfish Get States
 
-    Wait Until Keyword Succeeds  1 min  10 sec  Match State  ${standby_states}
+    Wait Until Keyword Succeeds  2 min  10 sec  Match State  ${standby_states}
 
 
 Match State
@@ -958,11 +977,23 @@ Redfish Initiate Auto Reboot
     Redfish Set Auto Reboot  RetryAttempts
 
     Redfish Power Operation  On
-    Sleep  30s
+
+    Wait Until Keyword Succeeds  2 min  5 sec  Is Boot Progress Changed
 
     # Set watchdog timer
     Set Watchdog Interval Using Busctl  ${interval}
 
+
+Is Boot Progress Changed
+    [Documentation]  Get BootProgress state and expect boot state mismatch.
+    [Arguments]  ${boot_state}=None
+
+    # Description of argument(s):
+    # boot_state   Value of the BootProgress state to match against.
+
+    ${boot_progress}  ${host_state}=  Redfish Get Boot Progress
+
+    Should Not Be Equal  ${boot_progress}   ${boot_state}
 
 
 Set Watchdog Interval Using Busctl
@@ -977,3 +1008,80 @@ Set Watchdog Interval Using Busctl
     ...                xyz.openbmc_project.State.Watchdog Interval t ${milliseconds}
     BMC Execute Command  ${cmd}
 
+
+Stop PLDM Service And Wait
+    [Documentation]  Stop PLDM service and wait for Host to initiate reset.
+
+    BMC Execute Command  systemctl stop pldmd.service
+
+
+Get BIOS Attribute
+    [Documentation]  Get the BIOS attribute for /redfish/v1/Systems/system/Bios.
+
+    # Python module:  get_member_list(resource_path)
+    ${systems}=  Redfish_Utils.Get Member List  /redfish/v1/Systems
+    ${bios_attr_dict}=  Redfish.Get Attribute  ${systems[0]}/Bios  Attributes
+
+    [Return]  ${bios_attr_dict}
+
+
+Set BIOS Attribute
+    [Documentation]  PATCH the BIOS attribute for /redfish/v1/Systems/system/Bios.
+    [Arguments]  ${attribute_name}  ${attribute_value}
+
+    # Description of argument(s):
+    # attribute_name     Any valid BIOS attribute.
+    # attribute_value    Valid allowed attribute values.
+
+    # Python module:  get_member_list(resource_path)
+    ${systems}=  Redfish_Utils.Get Member List  /redfish/v1/Systems
+    Redfish.Patch  ${systems[0]}/Bios/Settings  body={"Attributes":{"${attribute_name}":"${attribute_value}"}}
+
+
+Is BMC Operational
+    [Documentation]  Check if BMC is enabled.
+
+    ${bmc_status} =  Redfish Get BMC State
+    Should Be Equal  ${bmc_status}  Enabled
+
+
+PLDM Set BIOS Attribute
+    [Documentation]  Set the BIOS attribute via pldmtool and verify the attribute is set.
+    ...              Defaulted for fw_boot_side for boot test usage caller.
+    [Arguments]  ${attribute_name}=fw_boot_side  ${attribute_value}=Temp
+
+    # Description of argument(s):
+    # attribute_name      Valid BIOS attribute name e.g ("fw_boot_side")
+    # attribute_value     Valid BIOS attribute value for fw_boot_side.
+
+    # PLDM response output example:
+    # {
+    #    "Response": "SUCCESS"
+    # }
+
+    ${resp}=  pldmtool  bios SetBIOSAttributeCurrentValue -a ${attribute_name} -d ${attribute_value}
+    Should Be Equal As Strings  ${resp["Response"]}  SUCCESS
+
+    # PLDM GET output example:
+    # {
+    #    "CurrentValue": "Temp"
+    # }
+
+    ${pldm_output}=  PLDM Get BIOS Attribute  ${attribute_name}
+    Should Be Equal As Strings  ${pldm_output["CurrentValue"]}  ${attribute_value}
+    ...  msg=Expecting ${attribute_value} but got ${pldm_output["CurrentValue"]}
+
+
+PLDM Get BIOS Attribute
+    [Documentation]  Get the BIOS attribute via pldmtool for a given attribute and return value.
+    [Arguments]  ${attribute_name}
+
+    # Description of argument(s):
+    # attribute_name     Valid BIOS attribute name e.g ("fw_boot_side")
+
+    ${pldm_output}=  pldmtool  bios GetBIOSAttributeCurrentValueByHandle -a ${attribute_name}
+    [Return]  ${pldm_output}
+    Wait Until Keyword Succeeds  5 min  5 sec  Ping Host  ${OPENBMC_HOST}
+    Redfish.login
+    ${bmc_status}=  Redfish.Get Attribute  /redfish/v1/Managers/bmc  Status
+    Should Be Equal  ${bmc_status["State"]}  Enabled

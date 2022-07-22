@@ -16,7 +16,7 @@ ${rsv_github_url}         https://github.com/DMTF/Redfish-Reference-Checker.git
 ${rsv_dir_path}           Redfish-Reference-Checker
 
 ${command_string}  ${DEFAULT_PYTHON} ${rsv_dir_path}${/}RedfishReferenceTool.py
-...                --nochkcert 'https://${OPENBMC_HOST}:443/redfish/v1/$metadata'
+...                --nochkcert 'https://${OPENBMC_HOST}:${HTTPS_PORT}/redfish/v1/$metadata'
 
 *** Test Case ***
 
@@ -24,10 +24,11 @@ Test BMC Redfish Reference
     [Documentation]  Checks for valid reference URLs in CSDL XML files.
     [Tags]  Test_BMC_Redfish_Reference
 
-    ${output}=  Run DMTF Tool  ${rsv_dir_path}  ${command_string}
+    ${rc}  ${output}=  Run DMTF Tool  ${rsv_dir_path}  ${command_string}  check_error=1
 
     # Work complete, total failures:  0
     Should Match Regexp    ${output}  Work complete, total failures:[ ]+0
+    Run Keyword If  ${rc} != 0  Fail  Redfish-Reference-Checker Failed.
 
 *** Keywords ***
 

@@ -411,7 +411,8 @@ CLI Get Nameservers
     # nameserver x.x.x.x
     # nameserver y.y.y.y
 
-    ${stdout}  ${stderr}  ${rc}=  BMC Execute Command  egrep nameserver /etc/resolv.conf | cut -f2- -d ' '
+    ${stdout}  ${stderr}  ${rc}=  BMC Execute Command
+    ...  egrep nameserver /etc/resolv.conf | cut -f2- -d ' '
     ${nameservers}=  Split String  ${stdout}
 
     [Return]  ${nameservers}
@@ -451,7 +452,7 @@ Get Network Configuration
 
     # Description of argument(s):
     # network_active_channel   Ethernet channel number (eg. 1 or 2)
-    
+
     ${active_channel_config}=  Get Active Channel Config
     ${resp}=  Redfish.Get
     ...  ${REDFISH_NW_ETH_IFACE}${active_channel_config['${network_active_channel}']['name']}
@@ -708,3 +709,93 @@ Validate Hostname On BMC
     ${sys_hostname}=  Get BMC Hostname
     Should Be Equal  ${sys_hostname}  ${hostname}
     ...  ignore_case=True  msg=Hostname does not exist.
+
+Get Channel Number For All Interface
+    [Documentation]  Gets the Interface name and returns the channel number for the given interface.
+
+    ${valid_channel_number_interface_names}=  Get Channel Config
+
+    ${valid_channel_number_interface_names}=  Convert To Dictionary  ${valid_channel_number_interface_names}
+
+    [Return]  ${valid_channel_number_interface_names}
+
+Get Valid Channel Number
+    [Documentation]  Get Valid Channel Number.
+    [Arguments]  ${valid_channel_number_interface_names}
+
+    #Description of argument(s):
+    #valid_channel_number_interface_names   Contains channel names in dict.
+
+    &{valid_channel_number_interface_name}=  Create Dictionary
+
+    FOR  ${key}  ${values}  IN  &{valid_channel_number_interface_names}
+      Run Keyword If  '${values['is_valid']}' == 'True'
+      ...  Set To Dictionary  ${valid_channel_number_interface_name}  ${key}  ${values}
+    END
+
+    [Return]  ${valid_channel_number_interface_name}
+
+Get Invalid Channel Number List
+    [Documentation]  Get Invalid Channel and return as list.
+
+    ${available_channels}=  Get Channel Number For All Interface
+    # Get the channel which medium_type as 'reserved' and append it to a list.
+    @{invalid_channel_number_list}=  Create List
+
+    FOR  ${channel_number}  ${values}  IN  &{available_channels}
+       Run Keyword If  '${values['channel_info']['medium_type']}' == 'reserved'
+       ...  Append To List  ${invalid_channel_number_list}  ${channel_number}
+    END
+
+    [Return]  ${invalid_channel_number_list}
+
+
+Get Channel Number For Valid Ethernet Interface
+    [Documentation]  Get channel number for all ethernet interface.
+    [Arguments]  ${valid_channel_number_interface_name}
+
+    # Description of argument(s):
+    # channel_number_list  Contains channel names in list.
+
+    @{channel_number_list}=  Create List
+
+    FOR  ${channel_number}  ${values}  IN  &{valid_channel_number_interface_name}
+      Run Keyword If  '${values['channel_info']['medium_type']}' == 'lan-802.3'
+      ...  Append To List  ${channel_number_list}  ${channel_number}
+    END
+
+    [Return]  ${channel_number_list}
+
+
+Get Current Channel Name List
+    [Documentation]  Get Current Channel name and append it to active channel list.
+    [Arguments]  ${channel_list}  ${channel_config_json}
+
+    # Description of Arguments
+    # ${channel_list}        - list Contains all available active channels.
+    # ${channel_config_json} - output of /usr/share/ipmi-providers/channel_config.json file.
+
+    FOR  ${channel_number}  ${values}  IN  &{channel_config_json}
+        Run Keyword If  '${values['name']}' == 'SELF'
+        ...  Run Keyword  Append To List  ${channel_list}  ${channel_number}
+    END
+
+    [Return]  ${channel_list}
+
+
+Get Active Ethernet Channel List
+    [Documentation]  Get Available channels from channel_config.json file and return as list.
+    [Arguments]  ${current_channel}=${0}
+
+    ${valid_channel_number_interface_names}=  Get Channel Number For All Interface
+
+    ${valid_channel_number_interface_name}=  Get Valid Channel Number  ${valid_channel_number_interface_names}
+
+    ${channel_number_list}=  Get Channel Number For Valid Ethernet Interface
+    ...  ${valid_channel_number_interface_name}
+
+    Return From Keyword If  ${current_channel} == 0  ${channel_number_list}
+    ${channel_number_list}=  Get Current Channel Name List
+    ...  ${channel_number_list}  ${valid_channel_number_interface_names}
+
+    [Return]  ${channel_number_list}

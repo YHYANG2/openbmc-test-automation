@@ -27,6 +27,7 @@ class gui_variables():
     # Logs menu
     xpath_logs_menu = "//*[@data-test-id='nav-button-logs']"
     xpath_dumps_sub_menu = "//*[@data-test-id='nav-item-dumps']"
+    xpath_dumps_header = "//h1[text()='Dumps']"
     xpath_event_logs_sub_menu = "//*[@data-test-id='nav-item-event-logs']"
     xpath_event_header = "//h1[text()='Event logs']"
     xpath_progress_logs_sub_menu = "//*[@data-test-id='nav-item-post-code-logs']"
@@ -41,9 +42,9 @@ class gui_variables():
     xpath_factory_reset_sub_menu = "//*[@data-test-id='nav-item-factory-reset']"
     xpath_firmware_update_sub_menu = "//*[@data-test-id='nav-item-firmware']"
     xpath_reboot_bmc_sub_menu = "//*[@data-test-id='nav-item-reboot-bmc']"
-    xpath_sol_sub_menu = "//*[@data-test-id='nav-item-serial-over-lan']"
+    xpath_host_console_sub_menu = " //*[@data-test-id='nav-item-host-console']"
     xpath_server_power_operations_sub_menu = "//*[@data-test-id='nav-item-server-power-operations']"
-    xpath_sol_console_heading = "//h1[text()='Serial over LAN (SOL) console']"
+    xpath_host_console_heading = "//h1[text()='Host console']"
 
     # Settings menu
     xpath_settings_menu = "//*[@data-test-id='nav-button-settings']"
@@ -73,3 +74,10 @@ class gui_variables():
     # Common variables
     xpath_save_settings_button = "//button[contains(text(),'Save settings')]"
     xpath_confirm_button = "//button[contains(text(),'Confirm')]"
+    xpath_cancel_button = "//button[contains(text(),'Cancel')]"
+    xpath_add_button = "//button[normalize-space(text())='Add']"
+    xpath_page_loading_progress_ba = "//*[@aria-label='Page loading progress bar']"
+    # Reboot sub meanu
+    xpath_reboot_bmc_heading = "//h1[text()='Reboot BMC']"
+    xpath_reboot_bmc_button = "//button[contains(text(),'Reboot BMC')]"
+    xpath_confirm_bmc_reboot = "//*[@class='btn btn-primary']"

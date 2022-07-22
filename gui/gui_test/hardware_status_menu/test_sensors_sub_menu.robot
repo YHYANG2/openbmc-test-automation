@@ -28,7 +28,7 @@ Verify Navigation To Sensors Page
 
 Verify Existence Of All Sections In Sensor Page
     [Documentation]  Verify existence of all sections in sensor page.
-    [Tags]  Verify_Existence_Of_All_Sections_In_Event_Logs_Page
+    [Tags]  Verify_Existence_Of_All_Sections_In_Sensor_Page
 
     Page Should Contain  Sensors
 
@@ -123,3 +123,5 @@ Suite Setup Execution
     Click Element  ${xpath_hardware_status_menu}
     Click Element  ${xpath_sensor_sub_menu}
     Wait Until Keyword Succeeds  30 sec  5 sec  Location Should Contain  sensors
+    # Added delay for sensor page to load completely.
+    Sleep  100s

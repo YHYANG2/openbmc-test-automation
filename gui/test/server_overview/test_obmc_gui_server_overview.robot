@@ -55,7 +55,7 @@ Verify BMC Information Should Display At OBMC Power Off State
     Select Server Overview Menu
     Verify Display Content  ${string_BMC_info}
 
-Verify POWER Consumption Should Display At OBMC Power Off State
+Verify Power Consumption Should Display At OBMC Power Off State
     [Documentation]  Verify existence of text "Power Consumption".
     [Tags]  Verify_Power_Consumption_Should_Display_At_OBMC_Power_Off_State
     ...  OBMC_PowerOff_State
@@ -109,9 +109,10 @@ Verify BMC Information
     Verify Display Content  ${version}
 
     ${iplist}=  Get BMC IP Info
-    :FOR  ${ip}  IN  @{iplist}
-    \  ${ip}=  Fetch From Left  ${ip}  /
-    \  Verify Display Content  ${ip}
+    FOR  ${ip}  IN  @{iplist}
+      ${ip}=  Fetch From Left  ${ip}  /
+      Verify Display Content  ${ip}
+    END
 
     ${mac}=  Get BMC MAC Address
     Verify Display Content  ${mac}

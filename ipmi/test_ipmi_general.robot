@@ -3,11 +3,13 @@
 Documentation    Module to test IPMI asset tag functionality.
 Resource         ../lib/ipmi_client.robot
 Resource         ../lib/openbmc_ffdc.robot
+Resource         ../lib/bmc_network_utils.robot
 Variables        ../data/ipmi_raw_cmd_table.py
 Variables        ../data/ipmi_variable.py
 Library          ../lib/bmc_network_utils.py
 Library          ../lib/ipmi_utils.py
 
+Suite Setup      IPMI General Test Suite Setup
 Test Teardown    FFDC On Test Case Fail
 
 *** Test Cases ***
@@ -44,7 +46,8 @@ Verify Get DCMI Capabilities
 
 Test Get Self Test Results via IPMI Raw Command
     [Documentation]  Get self test results via IPMI raw command and verify the output.
-    [Tags]  Test_Get_Self_Test_Results_via_IPMI
+    [Tags]  Test_Get_Self_Test_Results_via_IPMI_Raw_Command
+
     ${resp}=  Run IPMI Standard Command  raw ${IPMI_RAW_CMD['Self_Test_Results']['Get'][0]}
 
     # 55h = No error. All Self Tests Passed.
@@ -54,7 +57,7 @@ Test Get Self Test Results via IPMI Raw Command
 
 Test Get Device GUID Via IPMI Raw Command
     [Documentation]  Get device GUID via IPMI raw command and verify it using Redfish.
-    [Tags]  Test_Get_Device_GUID_via_IPMI_and_Verify_via_Redfish
+    [Tags]  Test_Get_Device_GUID_Via_IPMI_Raw_Command
     [Teardown]  Run Keywords  Redfish.Logout  AND  FFDC On Test Case Fail
     # Get GUIDS via IPMI.
     # This should match the /redfish/v1/Managers/bmc's UUID data.
@@ -103,7 +106,10 @@ Verify Get Channel Info via IPMI
     ${channel_volatile_data_config}=  Get Channel Access Config  /run/ipmi/channel_access_volatile.json
     ${channel_nv_data_config}=  Get Channel Access Config  /var/lib/ipmi/channel_access_nv.json
 
-    Rprint Vars  channel_info_ipmi  active_channel_config  channel_volatile_data_config  channel_nv_data_config
+    Rprint Vars  channel_info_ipmi
+    Rprint Vars  active_channel_config
+    Rprint Vars  channel_volatile_data_config
+    Rprint Vars  channel_nv_data_config
 
     Valid Value  medium_type_ipmi_conf_map['${channel_info_ipmi['channel_0x${CHANNEL_NUMBER}_info']['channel_medium_type']}']
     ...  ['${active_channel_config['${CHANNEL_NUMBER}']['channel_info']['medium_type']}']
@@ -147,20 +153,37 @@ Verify Get Channel Info via IPMI
 
 
 Test Get Channel Authentication Capabilities via IPMI
-    [Documentation]  Test get channel authentication capabilities via IPMI.
+    [Documentation]  Verify channel authentication capabilities via IPMI.
     [Tags]  Test_Get_Channel_Authentication_Capabilities_via_IPMI
-    ${channel_auth_cap}=  Get Channel Auth Capabilities  ${CHANNEL_NUMBER}
-    Rprint Vars  channel_auth_cap
+    [Template]  Verify Channel Auth Capabilities
 
-    Valid Value  channel_auth_cap['channel_number']  ['${CHANNEL_NUMBER}']
-    Valid Value  channel_auth_cap['kg_status']  ['default (all zeroes)']
-    Valid Value  channel_auth_cap['per_message_authentication']  ['enabled']
-    Valid Value  channel_auth_cap['user_level_authentication']  ['enabled']
-    Valid Value  channel_auth_cap['non-null_user_names_exist']  ['yes']
-    Valid Value  channel_auth_cap['null_user_names_exist']  ['no']
-    Valid Value  channel_auth_cap['anonymous_login_enabled']  ['no']
-    Valid Value  channel_auth_cap['channel_supports_ipmi_v1.5']  ['no']
-    Valid Value  channel_auth_cap['channel_supports_ipmi_v2.0']  ['yes']
+    FOR  ${channel}  IN   @{active_channel_list}
+        FOR  ${privilege}  IN   4  3  2
+            # Input Channel     Privilege Level
+            ${channel}          ${privilege}
+        END
+    END
+
+
+Test Get Channel Authentication Capabilities IPMI Command For Invalid Channel
+    [Documentation]  Verify get channel authentication capabilities for invalid channel.
+    [Tags]  Test_Get_Channel_Authentication_Capabilities_IPMI_Command_For_Invalid_Channel
+    [Template]  Verify Channel Auth Capabilities For Invalid Channel
+
+    FOR  ${channel}  IN  @{inactive_channel_list}
+        # Input Channel
+        ${channel}
+    END
+
+
+Verify Get Channel Authentication Capabilities IPMI Raw Command With Invalid Data Length
+    [Documentation]  Verify get channel authentication capabilities IPMI raw command with invalid data length.
+    [Tags]  Verify_Get_Channel_Authentication_Capabilities_IPMI_Raw_Command_With_Invalid_Data_Length
+    [Template]  Verify Channel Auth Command For Invalid Data Length
+
+    # Bytes
+    low
+    high
 
 
 Verify Set Session Privilege Level via IPMI Raw Command
@@ -176,7 +199,7 @@ Verify Set Session Privilege Level via IPMI Raw Command
     0x04                04
 
 
-Verify Set Invalid Session Privilege Level via IPMI Raw Command
+Verify Set Invalid Session Privilege Level Via IPMI Raw Command
     [Documentation]  Verify set invalid session privilege level via IPMI raw command.
     [Tags]  Verify_Set_Invalid_Session_Privilege_Level_Via_IPMI_Raw_Command
     [Template]  Set Invalid Session Privilege Level And Verify
@@ -238,13 +261,27 @@ Verify Chassis Identify Off And Force Identify On via IPMI
 
 *** Keywords ***
 
+IPMI General Test Suite Setup
+    [Documentation]  Get active and inactive/invalid channels from channel_config.json file
+    ...              in list type and set it as suite variable.
+
+    # Get active channel list and set as suite variable.
+    @{active_channel_list}=  Get Active Ethernet Channel List
+    Set Suite Variable  @{active_channel_list}
+
+    # Get Inactive/Invalid channel list and set as suite variable.
+    @{inactive_channel_list}=  Get Invalid Channel Number List
+    Set Suite Variable  @{inactive_channel_list}
+
+
 Set Session Privilege Level And Verify
     [Documentation]   Set session privilege with given privilege level and verify the response with
     ...               expected level.
     [Arguments]  ${privilege_level}  ${expected_level}
     # Description of argument(s):
     # privilege_level    Requested Privilege Level.
-    # expected_level     New Privilege Level (or present level if ‘return present privilege level’ was selected).
+    # expected_level     New Privilege Level (or present level if ‘return present privilege level’
+    #                    was selected).
 
     ${resp}=  Run External IPMI Raw Command
     ...  0x06 0x3b ${privilege_level}
@@ -269,5 +306,69 @@ Verify Identify LED State Via Redfish
     # Description of argument(s):
     # expected_led_status  Expected value of Identify LED.
 
-    ${led_value}=  Redfish.Get Attribute  /redfish/v1/Systems/system  IndicatorLED
-    Should Be True  '${led_value}' == '${expected_state}'
+    # Get the following URI(s) and iterate to find the attribute IndicatorLED.
+    # Example:
+    # /redfish/v1/Systems/system
+    # /redfish/v1/Systems/hypervisor
+
+    # Python module:  get_member_list(resource_path)
+    ${systems}=  Redfish_Utils.Get Member List  /redfish/v1/Systems
+    FOR  ${system}  IN  @{systems}
+        ${led_value}=  Redfish.Get Attribute  ${system}  IndicatorLED
+        # Get attribute return None if IndicatorLED does not exist in the URI.
+        Continue For Loop If  '${led_value}' == 'None'
+        Should Be True  '${led_value}' == '${expected_state}'
+    END
+
+
+Verify Channel Auth Capabilities
+    [Documentation]  Verify authentication capabilities for given channel and privilege.
+    [Arguments]  ${channel}  ${privilege_level}
+
+    # Description of argument(s):
+    # channel           Interface channel number.
+    # privilege_level   User Privilege level (e.g. 4-Administator, 3-Operator, 2-Readonly).
+
+    # Python module:  get_channel_auth_capabilities(channel_number, privilege_level)
+    ${channel_auth_cap}=  Get Channel Auth Capabilities  ${channel}  ${privilege_level}
+    Rprint Vars  channel_auth_cap
+
+    Valid Value  channel_auth_cap['channel_number']  ['${channel}']
+    Valid Value  channel_auth_cap['kg_status']  ['default (all zeroes)']
+    Valid Value  channel_auth_cap['per_message_authentication']  ['enabled']
+    Valid Value  channel_auth_cap['user_level_authentication']  ['enabled']
+    Valid Value  channel_auth_cap['non-null_user_names_exist']  ['yes']
+    Valid Value  channel_auth_cap['null_user_names_exist']  ['no']
+    Valid Value  channel_auth_cap['anonymous_login_enabled']  ['no']
+    Valid Value  channel_auth_cap['channel_supports_ipmi_v1.5']  ['no']
+    Valid Value  channel_auth_cap['channel_supports_ipmi_v2.0']  ['yes']
+
+
+Verify Channel Auth Capabilities For Invalid Channel
+    [Documentation]  Verify authentication capabilities of invalid channels.
+    [Arguments]  ${channel}
+
+    # Description of argument(s):
+    # channel   Interface channel number.
+
+    ${channel_in_hex}=  Convert To Hex  ${channel}  prefix=0x
+    ${cmd}=  Catenate  ${IPMI_RAW_CMD['Get Channel Auth Cap']['get'][0]} ${channel_in_hex} 0x04
+
+    Verify Invalid IPMI Command  ${cmd}  0xcc
+
+
+Verify Channel Auth Command For Invalid Data Length
+   [Documentation]  Verify channel authentication command for invalid data length.
+   [Arguments]  ${byte_length}
+
+   # Description of argument(s):
+   # byte_length   high or low.
+   #               e.g. high - add extra byte to request data like "0x06 0x38 0x01 0x04 0x01".
+   #               low - reduce bytes in actual request data like "0x06 0x38".
+
+   ${req_cmd}=  Run Keyword If  '${byte_length}' == 'low'
+   ...  Catenate  ${IPMI_RAW_CMD['Get Channel Auth Cap']['get'][0]}  ${CHANNEL_NUMBER}
+   ...  ELSE
+   ...  Catenate  ${IPMI_RAW_CMD['Get Channel Auth Cap']['get'][0]}  ${CHANNEL_NUMBER} 0x04 0x01
+
+   Verify Invalid IPMI Command  ${req_cmd}  0xc7

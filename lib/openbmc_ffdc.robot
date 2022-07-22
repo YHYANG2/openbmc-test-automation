@@ -33,6 +33,7 @@ Resource           openbmc_ffdc_methods.robot
 Resource           openbmc_ffdc_utils.robot
 Resource           dump_utils.robot
 Library            openbmc_ffdc.py
+Library            ffdc_cli_robot_script.py
 
 *** Keywords ***
 
@@ -46,19 +47,22 @@ FFDC On Test Case Fail
     ...                  EX: 20160822041250932049:Test:Test case 1:PASS
     ...                      20160822041250969913:Test:Test case 2:FAIL
     ...               3. Delete error logs and BMC dumps post FFDC collection.
-    [Arguments]  ${clean_up}=${TRUE}
-    # Description of argument(s):
-    # clean_up     Boolean value indicating whether error logs and dumps should be deleted
-    #              on test failure after FFDC collection.
 
     ${OVERRIDE_FFDC_ON_TEST_CASE_FAIL}=  Get Environment Variable  OVERRIDE_FFDC_ON_TEST_CASE_FAIL  0
     ${OVERRIDE_FFDC_ON_TEST_CASE_FAIL}=  Convert To Integer  ${OVERRIDE_FFDC_ON_TEST_CASE_FAIL}
     Return From Keyword If  ${OVERRIDE_FFDC_ON_TEST_CASE_FAIL}
 
-    Run Keyword If  '${TEST_STATUS}' == 'FAIL'  FFDC
+    Run Keyword If  '${TEST_STATUS}' == 'FAIL'  Launch FFDC
 
     Log Test Case Status
 
-    # Clean up error logs and BMC dumps.
-    Run Keyword If  '${TEST_STATUS}' == 'FAIL' and ${clean_up}
-    ...  Run Keywords  Delete All Error Logs  AND  Delete All Dumps
+
+Launch FFDC
+    [Documentation]  Call point to call FFDC robot or FFDC script.
+    ...              FFDC_DEFAULT set to 1, by default, in resource.robot
+    ...              FFDC_DEFAULT:1  use legacy ffdc collector
+    ...              FFDC_DEFAULT:0  use new ffdc collector.
+
+    Run Keyword If  ${FFDC_DEFAULT} == ${1}  FFDC    # Keyword from openbmc_ffdc.py
+    ...    ELSE  ffdc_robot_script_cli               # Keyword from ffdc_cli_robot_script.py
+

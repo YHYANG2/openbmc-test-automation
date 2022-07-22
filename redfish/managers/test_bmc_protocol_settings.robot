@@ -5,14 +5,14 @@ Resource   ../../lib/bmc_redfish_resource.robot
 Resource   ../../lib/openbmc_ffdc.robot
 Resource   ../../lib/protocol_setting_utils.robot
 
-Suite Setup     Redfish.Login
-Suite Teardown  Redfish.Logout
+Suite Setup     Suite Setup Execution
+Suite Teardown  Run Keywords  Enable IPMI Protocol  ${initial_ipmi_state}  AND  Redfish.Logout
 Test Teardown   FFDC On Test Case Fail
 
 
 *** Variables ***
 
-${cmd_prefix}  ipmitool -I lanplus -C 17 -p 623 -U ${OPENBMC_USERNAME} -P ${OPENBMC_PASSWORD}
+${cmd_prefix}  ipmitool -I lanplus -C 17 -p 623 -U ${IPMI_USERNAME} -P ${IPMI_PASSWORD}
 
 
 *** Test Cases ***
@@ -40,6 +40,7 @@ Enable SSH Protocol And Verify
 
 Disable SSH Protocol And Verify
     [Documentation]  Disable SSH protocol and verify.
+    [Tags]  Disable_SSH_Protocol_And_Verify
     [Teardown]  Enable SSH Protocol  ${True}
 
     # Disable SSH interface.
@@ -58,11 +59,12 @@ Disable SSH Protocol And Verify
 
 Enable SSH Protocol And Check Persistency On BMC Reboot
     [Documentation]  Enable SSH protocol and verify persistency.
+    [Tags]  Enable_SSH_Protocol_And_Check_Persistency_On_BMC_Reboot
 
     Enable SSH Protocol  ${True}
 
     # Reboot BMC and verify persistency.
-    OBMC Reboot (off)
+    Redfish OBMC Reboot (off)  stack_mode=skip
 
     # Check if SSH is really enabled via Redfish.
     Verify SSH Protocol State  ${True}
@@ -73,16 +75,14 @@ Enable SSH Protocol And Check Persistency On BMC Reboot
 
 Disable SSH Protocol And Check Persistency On BMC Reboot
     [Documentation]  Disable SSH protocol and verify persistency.
+    [Tags]  Disable_SSH_Protocol_And_Check_Persistency_On_BMC_Reboot
     [Teardown]  Enable SSH Protocol  ${True}
 
     # Disable SSH interface.
     Enable SSH Protocol  ${False}
 
     # Reboot BMC and verify persistency.
-    # the OBMC Reboot  will check BMC status via SSH, but ssh is diabled now!
-    # OBMC Reboot (off)
-    Redfish BMC Reset Operation
-    Sleep  60s
+    Redfish OBMC Reboot (off)  stack_mode=skip
 
     # Check if SSH is really disabled via Redfish.
     Verify SSH Protocol State  ${False}
@@ -163,5 +163,146 @@ Disable IPMI Protocol And Verify
     ...  msg=IPMI commands are working after disabling IPMI.
 
 
+Enable IPMI Protocol And Check Persistency On BMC Reboot
+    [Documentation]  Set the IPMI protocol attribute to True, reset BMC, and verify
+    ...              that the setting persists.
+    [Tags]  Enable_IPMI_Protocol_And_Check_Persistency_On_BMC_Reboot
+
+    Enable IPMI Protocol  ${True}
+
+    Redfish OBMC Reboot (off)  stack_mode=skip
+
+    # Check if the IPMI enabled is set.
+    Verify IPMI Protocol State  ${True}
+
+    # Confirm that IPMI commands to access BMC work.
+    Verify IPMI Works  lan print
+
+
+Disable IPMI Protocol And Check Persistency On BMC Reboot
+    [Documentation]  Set the IPMI protocol attribute to False, reset BMC, and verify
+    ...              that the setting persists.
+    [Tags]  Disable_IPMI_Protocol_And_Check_Persistency_On_BMC_Reboot
+
+    # Disable IPMI interface.
+    Enable IPMI Protocol  ${False}
+
+    Redfish OBMC Reboot (off)  stack_mode=skip
+
+    # Check if the IPMI disabled is set.
+    Verify IPMI Protocol State  ${False}
+
+    # Confirm that IPMI connection request fails.
+    ${status}=  Run Keyword And Return Status
+    ...  Verify IPMI Works  lan print
+
+    Should Be Equal As Strings  ${status}  False
+    ...  msg=IPMI commands are working after disabling IPMI.
+
+
+Enable SSH And IPMI Protocol And Verify
+    [Documentation]  Set the SSH and IPMI protocol attributes to True, and verify
+    ...              that the setting attribute value is boolean True.
+    [Tags]  Enable_SSH_And_IPMI_Protocol_And_Verify
+
+    Set SSH And IPMI Protocol  ${True}  ${True}
+
+    # Check if SSH and IPMI enabled is set.
+    Verify SSH Protocol State  ${True}
+    Sleep  ${NETWORK_TIMEOUT}s
+    Verify IPMI Protocol State  ${True}
+
+    # Check if SSH login and IPMI commands work.
+    Verify SSH Login And Commands Work
+    Verify IPMI Works  lan print
+
+
+Disable SSH And IPMI Protocol And Verify
+    [Documentation]  Set the SSH and IPMI protocol attributes to False, and verify
+    ...              that both SSH login and IPMI commands does not work.
+    [Tags]  Disable_SSH_And_IPMI_Protocol_And_Verify
+    [Teardown]  Enable SSH Protocol  ${True}
+
+    Set SSH And IPMI Protocol  ${False}  ${False}
+
+    # Check if SSH login and commands fail.
+    ${status}=  Run Keyword And Return Status
+    ...  Verify SSH Login And Commands Work
+
+    Should Be Equal As Strings  ${status}  False
+    ...  msg=SSH Login and commands are working after disabling SSH.
+
+    # Check if IPMI commands fail.
+    ${status}=  Run Keyword And Return Status
+    ...  Verify IPMI Works  lan print
+
+    Should Be Equal As Strings  ${status}  False
+    ...  msg=IPMI commands are working after disabling IPMI.
+
+
+Enable SSH And Disable IPMI And Verify
+    [Documentation]   Set the SSH protocol attribute to True and IPMI protocol attribute to False, and verify
+    ...               that SSH login works and IPMI command does not work.
+    [Tags]  Enable_SSH_And_Disable_IPMI_And_Verify
+
+    Set SSH And IPMI Protocol  ${True}  ${False}
+
+    Verify SSH Login And Commands Work
+
+    # Check if IPMI commands fail.
+    ${status}=  Run Keyword And Return Status
+    ...  Verify IPMI Works  lan print
+
+    Should Be Equal As Strings  ${status}  False
+    ...  msg=IPMI commands are working after disabling IPMI.
+
+
 *** Keywords ***
 
+Suite Setup Execution
+    [Documentation]  Do suite setup tasks.
+
+    Redfish.Login
+
+    ${state}=  Run Keyword And Return Status  Verify IPMI Protocol State
+    Set Suite Variable  ${initial_ipmi_state}  ${state}
+
+
+Is BMC LastResetTime Changed
+    [Documentation]  return fail if BMC last reset time is not changed
+    [Arguments]  ${reset_time}
+
+    ${last_reset_time}=  Redfish.Get Attribute  /redfish/v1/Managers/bmc  LastResetTime
+    Should Not Be Equal  ${last_reset_time}  ${reset_time}
+
+
+Redfish BMC Reboot
+    [Documentation]  Use Redfish API reboot BMC and wait for BMC ready
+
+    #  Get BMC last reset time for compare
+    ${last_reset_time}=  Redfish.Get Attribute  /redfish/v1/Managers/bmc  LastResetTime
+
+    # Reboot BMC by Redfish API
+    Redfish BMC Reset Operation
+
+    # Wait for BMC real reboot and Redfish API ready
+    Wait Until Keyword Succeeds  3 min  10 sec  Is BMC LastResetTime Changed  ${last_reset_time}
+
+
+Set SSH And IPMI Protocol
+    [Documentation]  Set SSH and IPMI protocol state.
+    [Arguments]  ${ssh_state}  ${ipmi_state}
+
+    # Description of argument(s):
+    # ssh_state     state of SSH to be set(e.g. True, False).
+    # ipmi_state    state of IPMI to be set(e.g. True, False).
+
+    ${ssh_protocol_state}=  Create Dictionary  ProtocolEnabled=${ssh_state}
+    ${ipmi_protocol_state}=  Create Dictionary  ProtocolEnabled=${ipmi_state}
+    ${data}=  Create Dictionary  SSH=${ssh_protocol_state}  IPMI=${ipmi_protocol_state}
+
+    Redfish.Patch  ${REDFISH_NW_PROTOCOL_URI}  body=&{data}
+    ...  valid_status_codes=[${HTTP_NO_CONTENT}]
+
+    # Wait for timeout for new values to take effect.
+    Sleep  ${NETWORK_TIMEOUT}s

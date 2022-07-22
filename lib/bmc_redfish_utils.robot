@@ -10,6 +10,7 @@ Resource        bmc_redfish_resource.robot
 Redfish Power Operation
     [Documentation]  Do Redfish host power operation.
     [Arguments]      ${reset_type}
+
     # Description of arguments:
     # reset_type     Type of power operation.
     #                (e.g. On/ForceOff/GracefulRestart/GracefulShutdown)
@@ -38,21 +39,20 @@ Redfish Power Operation
 
 Redfish BMC Reset Operation
     [Documentation]  Do Redfish BMC reset operation.
+    [Arguments]  ${reset_type}=GracefulRestart
 
     # Example:
     # "Actions": {
     # "#Manager.Reset": {
     #  "ResetType@Redfish.AllowableValues": [
-    #    "GracefulRestart"
+    #    "GracefulRestart",
+    #    "ForceRestart"
     #  ],
     #  "target": "/redfish/v1/Managers/bmc/Actions/Manager.Reset"
     # }
 
-    ${session_info}=  Redfish.Get Session Info
-    Log  ${session_info}
-
     ${target}=  redfish_utils.Get Target Actions  /redfish/v1/Managers/bmc/  Manager.Reset
-    ${payload}=  Create Dictionary  ResetType=GracefulRestart
+    ${payload}=  Create Dictionary  ResetType=${reset_type}
     Redfish.Post  ${target}  body=&{payload}
 
 
@@ -121,9 +121,39 @@ Delete All Redfish Sessions
     # Remove the current login session from the list.
     Remove Values From List  ${resp_list}  ${saved_session_info["location"]}
 
+    # Remove session with client_id populated from the list.
+    ${client_id_list}=  Get Session With Client Id  ${resp_list}
+    Log To Console  Client sessions skip list: ${client_id_list}
+    FOR  ${client_session}  IN  @{client_id_list}
+        Remove Values From List  ${resp_list}  ${client_session}
+    END
+
     FOR  ${session}  IN  @{resp_list}
         Run Keyword And Ignore Error  Redfish.Delete  ${session}
     END
+
+
+Get Session With Client Id
+    [Documentation]  Iterate through the active sessions and return sessions populated with client id.
+    [Arguments]  ${session_list}
+
+    # Description of argument(s):
+    # session_list   Active session list from SessionService.
+
+    #  "Oem": {
+    #    "OpenBMC": {
+    #        "@odata.type": "#OemSession.v1_0_0.Session",
+    #        "ClientID": "MYID=Vd57f62*2811504"
+    #    }
+
+    ${client_id_sessions}=  Create List
+    FOR  ${session}  IN  @{session_list}
+        ${resp}=  Redfish.Get  ${session}   valid_status_codes=[200,404]
+        Run Keyword If  '${resp.dict["Oem"]["OpenBMC"]["ClientID"]}' != '${EMPTY}'
+        ...    Append To List  ${client_id_sessions}  ${session}
+    END
+
+    [Return]  ${client_id_sessions}
 
 
 Get Valid FRUs
@@ -277,13 +307,14 @@ Expire And Update New Password Via Redfish
     # Expire admin password using ssh.
     Open Connection And Log In  ${username}  ${password}
     ${output}  ${stderr}  ${rc}=  BMC Execute Command  passwd --expire ${username}
-    Should Contain  ${output}  password changed
+    Should Contain Any  ${output}  password expiry information changed
+    ...  password changed
 
     # Verify user password expired using Redfish
     Verify User Password Expired Using Redfish  ${username}  ${password}
 
     # Change user password.
-    Redfish.Patch  /redfish/v1/AccountService/Accounts/admin_user
+    Redfish.Patch  /redfish/v1/AccountService/Accounts/${username}
     ...  body={'Password': '${new_password}'}
     Redfish.Logout
 

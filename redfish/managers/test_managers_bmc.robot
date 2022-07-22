@@ -18,7 +18,7 @@ Library          ../../lib/gen_robot_valid.py
 ${SYSTEM_SHUTDOWN_TIME}    ${5}
 
 # Strings to check from journald.
-${REBOOT_REGEX}    ^\-- Boot
+${REBOOT_REGEX}    ^\-- Boot | Startup finished
 
 *** Test Cases ***
 
@@ -106,7 +106,8 @@ Redfish BMC Manager GracefulRestart When Host Off
     # "Actions": {
     # "#Manager.Reset": {
     #  "ResetType@Redfish.AllowableValues": [
-    #    "GracefulRestart"
+    #    "GracefulRestart",
+    #    "ForceRestart"
     #  ],
     #  "target": "/redfish/v1/Managers/bmc/Actions/Manager.Reset"
     # }
@@ -114,14 +115,48 @@ Redfish BMC Manager GracefulRestart When Host Off
     ${test_file_path}=  Set Variable  /tmp/before_bmcreboot
     BMC Execute Command  touch ${test_file_path}
 
-    Redfish OBMC Reboot (off)
+    Redfish Power Off  stack_mode=skip
 
-    BMC Execute Command  if [ -f ${test_file_path} ] ; then false ; fi
-    #Verify BMC RTC And UTC Time Drift
+    Redfish BMC Reset Operation  reset_type=GracefulRestart
+
+    Is BMC Standby
+
+    ${stdout}  ${stderr}  ${rc}=  BMC Execute Command  test ! -f ${test_file_path}  print_out=1
+    Verify BMC RTC And UTC Time Drift
 
     # Check for journald persistency post reboot.
-    # Check For Regex In Journald  ${REBOOT_REGEX}  error_check=${1}
+    Wait Until Keyword Succeeds  3 min  10 sec
+    ...  Check For Regex In Journald  ${REBOOT_REGEX}  error_check=${1}
 
+
+Redfish BMC Manager ForceRestart When Host Off
+    [Documentation]  BMC force restart when host is powered off.
+    [Tags]  Redfish_BMC_Manager_ForceRestart_When_Host_Off
+
+    # "Actions": {
+    # "#Manager.Reset": {
+    #  "ResetType@Redfish.AllowableValues": [
+    #    "GracefulRestart",
+    #    "ForceRestart"
+    #  ],
+    #  "target": "/redfish/v1/Managers/bmc/Actions/Manager.Reset"
+    # }
+
+    ${test_file_path}=  Set Variable  /tmp/before_bmcreboot
+    BMC Execute Command  touch ${test_file_path}
+
+    Redfish Power Off  stack_mode=skip
+
+    Redfish BMC Reset Operation  reset_type=ForceRestart
+
+    Is BMC Standby
+
+    ${stdout}  ${stderr}  ${rc}=  BMC Execute Command  test ! -f ${test_file_path}  print_out=1
+    Verify BMC RTC And UTC Time Drift
+
+    # Check for journald persistency post reboot.
+    Wait Until Keyword Succeeds  3 min  10 sec
+    ...  Check For Regex In Journald  ${REBOOT_REGEX}  error_check=${1}
 
 Verify Boot Count After BMC Reboot
     [Documentation]  Verify boot count increments on BMC reboot.
@@ -140,7 +175,7 @@ Redfish BMC Manager GracefulRestart When Host Booted
     Redfish OBMC Reboot (run)
 
     # TODO: Replace OCC state check with redfish property when available.
-    #Verify OCC State
+    Wait Until Keyword Succeeds  10 min  30 sec  Verify OCC State
 
 
 *** Keywords ***

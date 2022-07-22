@@ -21,7 +21,7 @@ Verify Core Dump Size
     [Documentation]  Verify BMC core dump size is under 200k.
     [Tags]  Verify_Core_Dump_Size
 
-    Delete All Dumps
+    Redfish Delete All BMC Dumps
     Trigger Core Dump
     Wait Until Keyword Succeeds  2 min  10 sec  Get Dump Entries
 
@@ -37,6 +37,8 @@ Verify Dump After Host Watchdog Error Injection
     [Tags]  Verify_Dump_After_Host_Watchdog_Error_Injection
 
     Redfish Power On
+
+    Run Keyword And Ignore Error  Redfish Delete All BMC Dumps
 
     # Enable auto reboot
     Set Auto Reboot  ${1}
@@ -66,7 +68,7 @@ Verify Download BMC Dump
     [Documentation]  Verify that a BMC dump can be downloaded to the local machine.
     [Tags]  Verify_Download_BMC_Dump
 
-    ${dump_id}=  Create User Initiated BMC Dump Using Redfish
+    ${dump_id}=  Create User Initiated BMC Dump Via Redfish
     ${dump_dict}=  Get Dump Dict
     ${bmc_dump_name}=  Fetch From Right  ${dump_dict['${dump_id}']}  /
     ${bmc_dump_checksum}  ${stderr}  ${rc}=  BMC Execute Command

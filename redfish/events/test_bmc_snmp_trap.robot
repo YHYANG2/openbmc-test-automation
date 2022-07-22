@@ -11,8 +11,9 @@ Resource      ../../lib/openbmc_ffdc.robot
 Resource      ../../lib/logging_utils.robot
 
 
-Test Teardown  FFDC On Test Case Fail
-Suite Setup    Suite Setup Execution
+Test Teardown     FFDC On Test Case Fail
+Suite Setup       Suite Setup Execution
+Suite Teardown    Suite Teardown Execution
 
 
 *** Test Cases ***
@@ -27,7 +28,7 @@ Configure SNMP Manager On BMC And Verify
     Verify SNMP Manager Configured On BMC  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
 
 
-Configure SNMP Manager On BMC With Non-default Port And Verify
+Configure SNMP Manager On BMC With Non Default Port And Verify
     [Documentation]  Configure SNMP Manager On BMC And Verify.
     [Tags]  Configure_SNMP_Manager_On_BMC_With_Non_Default_Port_And_Verify
     [Teardown]  Delete SNMP Manager Via Redfish  ${SNMP_MGR1_IP}  ${NON_DEFAULT_PORT1}
@@ -107,10 +108,10 @@ Configure Multiple SNMP Managers And Verify
     Verify SNMP Manager Configured On BMC  ${SNMP_MGR2_IP}  ${SNMP_DEFAULT_PORT}
 
 
-Generate Error On BMC And Verify SNMP Trap Is Sent To Non-Default Port
+Generate Error On BMC And Verify SNMP Trap Is Sent To Non Default Port
     [Documentation]  Generate error on BMC and verify trap and its fields.
-    [Tags]  Generate_Error_On_BMC_And_Verify_SNMP_Trap_Is_Sent_To_Non-Default_Port
-    [Template]  Create Error On BMC And Verify Trap On Non-Default Port
+    [Tags]  Generate_Error_On_BMC_And_Verify_SNMP_Trap_Is_Sent_To_Non_Default_Port
+    [Template]  Create Error On BMC And Verify Trap On Non Default Port
 
     # event_log                 expected_error
 
@@ -144,7 +145,7 @@ Verify SNMP SysUpTime On BMC Reboot
     Should Be True  ${uptime} <= 1  msg=SNMP SysUpTime is not reset on reboot
 
 
-Configure Multiple SNMP Managers With Non-default Port And Verify
+Configure Multiple SNMP Managers With Non Default Port And Verify
     [Documentation]  Configure multiple SNMP Managers with non-default port And Verify.
     [Tags]  Configure_Multiple_SNMP_Managers_With_Non_Default_Port_And_Verify
     [Teardown]  Run Keywords
@@ -293,6 +294,13 @@ Suite Setup Execution
     # Check for SNMP configurations.
     Valid Value  SNMP_MGR1_IP
     Valid Value  SNMP_DEFAULT_PORT
+
+
+Suite Teardown Execution
+    [Documentation]  Do suite Teardown execution.
+
+    Run Keyword And Ignore Error  Redfish Purge Event Log
+    Run Keyword And Ignore Error  Redfish Delete All BMC Dumps
 
 
 Generate Error And Verify System Up Time

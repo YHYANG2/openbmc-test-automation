@@ -125,6 +125,7 @@ def login_ssh(login_args={},
         gp.lprint_var(login_attempt_num)
         try:
             out_buf = sshlib.login(**login_args)
+            BuiltIn().log_to_console(out_buf)
         except Exception:
             # Login will sometimes fail if the connection is new.
             except_type, except_value, except_traceback = sys.exc_info()
@@ -253,6 +254,7 @@ def execute_ssh_command(cmd_buf,
                                        return_stderr=True,
                                        return_rc=True,
                                        time_out=time_out)
+                    BuiltIn().log_to_console(stdout)
         except Exception:
             except_type, except_value, except_traceback = sys.exc_info()
             gp.lprint_var(except_type)

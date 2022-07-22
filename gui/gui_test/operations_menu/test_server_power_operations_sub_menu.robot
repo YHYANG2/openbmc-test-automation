@@ -67,15 +67,15 @@ Verify Existence Of All Sections In Server Power Operations Page
     [Tags]  Verify_Existence_Of_All_Sections_In_Server_Power_Operations_Page
 
     # Added a delay for the page to load boot settings section.
-    Wait Until Page Contains  Boot settings  timeout=5
+    Wait Until Page Contains  Server power operations  timeout=5
     Page Should Contain  Current status
-    Page Should Contain  Boot settings
     Page Should Contain  Operations
+    Page Should Contain  Settings
 
 
 Verify Existence Of All Input Boxes In Host Os Boot Settings
     [Documentation]  Verify existence of all input boxes in host os boot settings.
-    [Tags]  Verify_Existence_Of_Input_Boxes_In_Host_Os_Boot_Settings
+    [Tags]  Verify_Existence_Of_All_Input_Boxes_In_Host_Os_Boot_Settings
 
     # Added a delay for the page to load boot settings section.
     Wait Until Page Contains  Boot settings  timeout=5
@@ -106,9 +106,7 @@ Verify System State At Power On
     [Setup]  Run Keywords  Redfish Power On  stack_mode=skip  AND  Launch Browser And Login GUI
     ...  AND  Navigate to Server Power Operation Page
 
-    Page Should Contain Element  ${xpath_current_power_state}
-    Element Should Contain   ${xpath_current_power_state}  On
-
+    Wait Until Keyword Succeeds  15 sec  5 sec   Element Should Contain   ${xpath_current_power_state}  On
 
 Verify PowerOn Button Should Present At Power Off
     [Documentation]  Verify existence of poweron button at power off.

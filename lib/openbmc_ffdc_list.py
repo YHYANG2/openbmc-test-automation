@@ -33,7 +33,6 @@ FFDC_BMC_CMD = {
     'APPLICATION DATA':
     {
         'BMC state': '/usr/bin/obmcutil state',
-        'bmcweb data': 'for f in `find /var/lib/bmcweb/ -name "*.json"`; do (echo $f; cat $f) done',
     },
 }
 # Add file name and corresponding command needed for BMC
@@ -59,14 +58,20 @@ FFDC_BMC_FILE = {
         'PEL_logs_complete_list.json': 'peltool -l -a -f >/tmp/PEL_logs_complete_list.json 2>&1',
         'PEL_logs_display.json': 'peltool -a >/tmp/PEL_logs_display.json 2>&1',
         'PEL_logs_complete_display.json': 'peltool -a -f -h>/tmp/PEL_logs_complete_display.json 2>&1',
+        'PEL_logs_badPEL.txt': 'hexdump -C'
+        + ' /var/lib/phosphor-logging/extensions/pels/badPEL>/tmp/PEL_logs_badPEL.txt 2>&1',
+        'PLDM_fru_record.txt': 'pldmtool fru getfrurecordtable>/tmp/PLDM_fru_record.txt 2>&1',
         'BMC_pldm_flight_recorder.txt': 'rm -rf /tmp/pldm_flight_recorder; killall -s SIGUSR1 pldmd;'
         + ' sleep 5; cat /tmp/pldm_flight_recorder > /tmp/BMC_pldm_flight_recorder.txt 2>&1;',
-        'OCC_state.txt': 'for i in {0..3};'
+        'OCC_state.txt': 'echo "OCC state check";for i in {0..3};'
         + ' do (echo /org/open_power/control/occ$i;'
         + ' busctl get-property org.open_power.OCC.Control /org/open_power/control/occ$i'
         + ' org.open_power.OCC.Status OccActive) done > /tmp/OCC_state.txt 2>&1',
         'bmcweb_persistent_data.json': 'cat /home/root/bmcweb_persistent_data.json'
         + ' > /tmp/bmcweb_persistent_data.json',
+        'GUARD_list.txt': 'guard -l > /tmp/GUARD_list.txt 2>&1',
+        'fan_control_dump.json': 'fanctl dump; sleep 5',
+        'DEVTREE': 'cat /var/lib/phosphor-software-manager/pnor/rw/DEVTREE > /tmp/DEVTREE 2>&1',
     },
 }
 # Add file name and corresponding command needed for all Linux distributions
@@ -191,6 +196,7 @@ FFDC_METHOD_CALL = {
     'BMC LOGS':
     {
         # Description               Keyword name
+        'Start ffdc cleanup': 'BMC FFDC Cleanup',
         'FFDC Generic Report': 'BMC FFDC Manifest',
         'BMC Specific Files': 'BMC FFDC Files',
         'Get Request FFDC': 'BMC FFDC Get Requests',
@@ -199,15 +205,14 @@ FFDC_METHOD_CALL = {
         'Core Files': 'SCP Coredump Files',
         'SEL Log': 'Collect eSEL Log',
         'Sys Inventory Files': 'System Inventory Files',
-        'Dump Log': 'Collect Dump Log',
         'Dump Files': 'SCP Dump Files',
-        'Dump HB Files': 'SCP Dump HB Files',
         'PEL Files': 'Collect PEL Log',
         'Redfish Log': 'Enumerate Redfish Resources',
         'Firmware Log': 'Enumerate Redfish Resources  '
         + ' enum_uri=/redfish/v1/UpdateService/FirmwareInventory  '
         + ' file_enum_name=redfish_FIRMWARE_list.txt',
         'Redfish OEM Log': 'Enumerate Redfish OEM Resources',
+        'End ffdc cleanup': 'BMC FFDC Cleanup',
     },
 }
 

@@ -5,6 +5,10 @@ Library        OperatingSystem
 Resource       rest_client.robot
 Resource       resource.robot
 
+*** Variables ***
+
+# Default wait sync time for certificate install and restart services.
+${wait_time}    30
 
 *** Keywords ***
 
@@ -163,6 +167,8 @@ Delete All CA Certificate Via Redfish
     ${cert_list}=  Redfish_Utils.Get Member List  /redfish/v1/Managers/bmc/Truststore/Certificates
     FOR  ${cert}  IN  @{cert_list}
       Redfish.Delete  ${cert}  valid_status_codes=[${HTTP_NO_CONTENT}]
+      Log To Console  Wait Time started in seconds ${wait_time}
+      Sleep  ${wait_time}s
     END
 
 
@@ -241,3 +247,76 @@ Replace Certificate Via Redfish
     ...    Should Contain  ${cert_file_content}  ${bmc_cert_content}
     ...  ELSE
     ...    Should Not Contain  ${cert_file_content}  ${bmc_cert_content}
+
+
+Install And Verify Certificate Via Redfish
+    [Documentation]  Install and verify certificate using Redfish.
+    [Arguments]  ${cert_type}  ${cert_format}  ${expected_status}  ${delete_cert}=${True}
+
+    # Description of argument(s):
+    # cert_type           Certificate type (e.g. "Client" or "CA").
+    # cert_format         Certificate file format
+    #                     (e.g. "Valid_Certificate_Valid_Privatekey").
+    # expected_status     Expected status of certificate replace Redfish
+    #                     request (i.e. "ok" or "error").
+    # delete_cert         Certificate will be deleted before installing if this True.
+
+    Run Keyword If  '${cert_type}' == 'CA' and '${delete_cert}' == '${True}'
+    ...  Delete All CA Certificate Via Redfish
+    ...  ELSE IF  '${cert_type}' == 'Client' and '${delete_cert}' == '${True}'
+    ...  Delete Certificate Via BMC CLI  ${cert_type}
+
+    ${cert_file_path}=  Generate Certificate File Via Openssl  ${cert_format}
+    ${bytes}=  OperatingSystem.Get Binary File  ${cert_file_path}
+    ${file_data}=  Decode Bytes To String  ${bytes}  UTF-8
+
+    ${certificate_uri}=  Set Variable If
+    ...  '${cert_type}' == 'Client'  ${REDFISH_LDAP_CERTIFICATE_URI}
+    ...  '${cert_type}' == 'CA'  ${REDFISH_CA_CERTIFICATE_URI}
+
+    Run Keyword If  '${cert_format}' == 'Expired Certificate'  Modify BMC Date  future
+    ...  ELSE IF  '${cert_format}' == 'Not Yet Valid Certificate'  Modify BMC Date  old
+
+    ${cert_id}=  Install Certificate File On BMC  ${certificate_uri}  ${expected_status}  data=${file_data}
+    Logging  Installed certificate id: ${cert_id}
+
+    # Adding delay after certificate installation.
+    # Lesser wait timing causes bmcweb to restart quickly and breaks the web services.
+    Log To Console  Wait Time started in seconds ${wait_time}
+    Sleep  ${wait_time}s
+
+    ${cert_file_content}=  OperatingSystem.Get File  ${cert_file_path}
+    ${bmc_cert_content}=  Run Keyword If  '${expected_status}' == 'ok'  redfish_utils.Get Attribute
+    ...  ${certificate_uri}/${cert_id}  CertificateString
+
+    Run Keyword If  '${expected_status}' == 'ok'  Should Contain  ${cert_file_content}  ${bmc_cert_content}
+    [Return]  ${cert_id}
+
+
+Modify BMC Date
+    [Documentation]  Modify date in BMC.
+    [Arguments]  ${date_set_type}=current
+
+    # Description of argument(s):
+    # date_set_type    Set BMC date to a current, future, old date by 375 days.
+    #                  current - Sets date to local system date.
+    #                  future - Sets to a future date from current date.
+    #                  old - Sets to a old date from current date.
+
+    Redfish Power Off  stack_mode=skip
+    ${current_date_time}=  Get Current Date
+    ${new_time}=  Run Keyword If  '${date_set_type}' == 'current'  Set Variable  ${current_date_time}
+    ...  ELSE IF  '${date_set_type}' == 'future'
+    ...  Add Time To Date  ${current_date_time}  375 days
+    ...  ELSE IF  '${date_set_type}' == 'old'
+    ...  Subtract Time From Date  ${current_date_time}  375 days
+
+    # Enable manual mode.
+    Redfish.Patch  ${REDFISH_NW_PROTOCOL_URI}
+    ...  body={'NTP':{'ProtocolEnabled': ${False}}}
+    ...  valid_status_codes=[${HTTP_OK}, ${HTTP_NO_CONTENT}]
+
+    # NTP network takes few seconds to restart.
+    Wait Until Keyword Succeeds  30 sec  10 sec
+    ...  Redfish.Patch  ${REDFISH_BASE_URI}Managers/bmc  body={'DateTime': '${new_time}'}
+    ...  valid_status_codes=[${HTTP_OK}]

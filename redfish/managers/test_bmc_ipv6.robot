@@ -45,9 +45,6 @@ Get IPv6 Default Gateway And Verify
     [Documentation]  Get IPv6 default gateway and verify.
     [Tags]  Get_IPv6_Default_Gateway_And_Verify
 
-    ${active_channel_config}=  Get Active Channel Config
-    ${ethernet_interface}=  Set Variable  ${active_channel_config['${CHANNEL_NUMBER}']['name']}
-
     ${resp}=  Redfish.Get  ${REDFISH_NW_ETH_IFACE}${ethernet_interface}
     ${ipv6_gateway}=  Get From Dictionary  ${resp.dict}  IPv6DefaultGateway
     Verify IPv6 Default Gateway On BMC  ${ipv6_gateway}

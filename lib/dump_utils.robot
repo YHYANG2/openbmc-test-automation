@@ -242,13 +242,12 @@ Trigger Core Dump
     Should Be Equal As Integers  ${rc}  ${0}
     ...  msg=BMC execute command return code is not zero.
 
-Create User Initiated BMC Dump Using Redfish
+Create User Initiated BMC Dump Via Redfish
     [Documentation]  Generate user initiated BMC dump via Redfish and return the dump id number (e.g., "5").
 
     ${payload}=  Create Dictionary  DiagnosticDataType=Manager
-    ${resp}=  Redfish.Post
-    ...  /redfish/v1/Managers/bmc/LogServices/Dump/Actions/LogService.CollectDiagnosticData
-    ...  body=${payload}  valid_status_codes=[${HTTP_ACCEPTED}, ${HTTP_OK}]
+    ${resp}=  Redfish.Post  /redfish/v1/Managers/bmc/LogServices/Dump/Actions/LogService.CollectDiagnosticData
+    ...  body=${payload}  valid_status_codes=[${HTTP_ACCEPTED}]
 
     # Example of response from above Redfish POST request.
     # "@odata.id": "/redfish/v1/TaskService/Tasks/0",

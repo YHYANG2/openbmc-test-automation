@@ -33,6 +33,9 @@ ${REST_PASSWORD}       0penBmc
 ${OPENBMC_ADMIN_PASSWORD}  0penBmc
 ${SERVICE_USER_PASSWORD}   0penBmc
 
+# For users privilege admin or sudo.
+${USER_TYPE}          ${EMPTY}
+
 ${CHASSIS_ID}  chassis
 ${COMPONENT_NAME_OF_POWER_SUPPLY}  powersupply
 
@@ -43,6 +46,7 @@ ${VALID_CERT}          ${EMPTY}
 # Path of mTLS certificates directory.
 ${CERT_DIR_PATH}       ${EMPTY}
 
+${IPMI_USERNAME}       root
 ${IPMI_PASSWORD}       0penBmc
 ${MACHINE_TYPE}    palmetto
 ${DBUS_POLL_INTERVAL}      15s
@@ -54,6 +58,13 @@ ${IPMI_COMMAND}    External
 ${IPMI_CIPHER_LEVEL}  ${17}
 # IPMI timeout default.
 ${IPMI_TIMEOUT}       ${3}
+
+# Log default path for IPMI SOL.
+${IPMI_SOL_LOG_FILE}    ${EXECDIR}${/}logs${/}sol_${OPENBMC_HOST}
+
+# IPMI SOL console output types/parameters to verify.
+${SOL_BIOS_OUTPUT}          ${EMPTY}
+${SOL_LOGIN_OUTPUT}         ${EMPTY}
 
 # PDU related parameters
 ${PDU_TYPE}         ${EMPTY}
@@ -138,6 +149,13 @@ ${LDAP_SEARCH_SCOPE}        ${EMPTY}
 ${LDAP_TYPE}                ${EMPTY}
 ${LDAP_USER}                ${EMPTY}
 ${LDAP_USER_PASSWORD}       ${EMPTY}
+${GROUP_PRIVILEGE}          ${EMPTY}
+${GROUP_NAME}               ${EMPTY}
+${LDAP_SERVER_URI}          ldap://${LDAP_SERVER_HOST}
+
+# General tool variables
+# FFDC_DEFAULT == 1; use Default FFDC methods
+${FFDC_DEFAULT}            ${1}
 
 *** Keywords ***
 Get Inventory Schema
