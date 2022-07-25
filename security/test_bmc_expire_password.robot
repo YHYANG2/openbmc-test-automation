@@ -26,7 +26,7 @@ Expire Root Password And Check IPMI Access Fails
     Open Connection And Log In  ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}
 
     ${output}  ${stderr}  ${rc}=  BMC Execute Command  passwd --expire ${OPENBMC_USERNAME}
-    Should Contain  ${output}  password expiry information changed
+    Should Contain Any  ${output}  password expiry information changed  password changed
 
     ${status}=  Run Keyword And Return Status   Run External IPMI Standard Command  lan print -v
     Should Be Equal  ${status}  ${False}
@@ -39,7 +39,7 @@ Expire Root Password And Check SSH Access Fails
 
     Open Connection And Log In  ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}
     ${output}  ${stderr}  ${rc}=  BMC Execute Command  passwd --expire ${OPENBMC_USERNAME}
-    Should Contain  ${output}  password expiry information changed
+    Should Contain Any  ${output}  password expiry information changed  password changed
 
     ${status}=  Run Keyword And Return Status
     ...  Open Connection And Log In  ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}
@@ -48,14 +48,14 @@ Expire Root Password And Check SSH Access Fails
 
 Expire And Change Root User Password And Access Via SSH
     [Documentation]   Expire and change root user password and access via SSH.
-    [Tags]  Expire_Root_User_Password_And_Access_Via_SSH
+    [Tags]  Expire_And_Change_Root_User_Password_And_Access_Via_SSH
     [Teardown]  Run Keywords  Wait Until Keyword Succeeds  1 min  10 sec
     ...  Restore Default Password For Root User  AND  FFDC On Test Case Fail
 
     Open Connection And Log In  ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}
 
     ${output}  ${stderr}  ${rc}=  BMC Execute Command  passwd --expire ${OPENBMC_USERNAME}
-    Should Contain  ${output}  password expiry information changed
+    Should Contain Any  ${output}  password expiry information changed  password changed
 
     Redfish.Login
     # Change to a valid password.
@@ -74,7 +74,7 @@ Expire Root Password And Update Bad Password Length Via Redfish
 
    Open Connection And Log In  ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}
    ${output}  ${stderr}  ${rc}=  BMC Execute Command  passwd --expire ${OPENBMC_USERNAME}
-   Should Contain  ${output}  password expiry information changed
+   Should Contain Any  ${output}  password expiry information changed  password changed
 
    Redfish.Login
    ${status}=  Run Keyword And Return Status
@@ -93,7 +93,7 @@ Expire And Change Root User Password Via Redfish And Verify
    Open Connection And Log In  ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}
 
    ${output}  ${stderr}  ${rc}=  BMC Execute Command  passwd --expire ${OPENBMC_USERNAME}
-   Should Contain  ${output}  password expiry information changed
+   Should Contain Any  ${output}  password expiry information changed  password changed
 
    Verify User Password Expired Using Redfish  ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}
    # Change to a valid password.
@@ -113,7 +113,7 @@ Verify Error While Creating User With Expired Password
 
     Open Connection And Log In  ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}
     ${output}  ${stderr}  ${rc}=  BMC Execute Command  passwd --expire ${OPENBMC_USERNAME}
-    Should Contain  ${output}  password expiry information changed
+    Should Contain Any  ${output}  password expiry information changed  password changed
 
     Verify User Password Expired Using Redfish  ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}
     Redfish.Login
@@ -132,7 +132,7 @@ Expire And Change Root Password Via GUI
 
     Open Connection And Log In  ${OPENBMC_USERNAME}  ${OPENBMC_PASSWORD}
     ${output}  ${stderr}  ${rc}=  BMC Execute Command  passwd --expire ${OPENBMC_USERNAME}
-    Should Contain  ${output}  password expiry information changed
+    Should Contain Any  ${output}  password expiry information changed  password changed
 
     Wait Until Page Contains Element  ${xpath_root_button_menu}
     Click Element  ${xpath_root_button_menu}

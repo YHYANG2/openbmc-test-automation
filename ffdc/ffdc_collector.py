@@ -14,6 +14,14 @@ import logging
 import platform
 from errno import EACCES, EPERM
 import subprocess
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(script_dir)
+# Walk path and append to sys.path
+for root, dirs, files in os.walk(script_dir):
+    for dir in dirs:
+        sys.path.append(os.path.join(root, dir))
+
 from ssh_utility import SSHRemoteclient
 from telnet_utility import TelnetRemoteclient
 
@@ -33,8 +41,8 @@ Example how to define in YAML:
        - arg1
        - arg2
 """
-abs_path = os.path.abspath(os.path.dirname(sys.argv[0]))
-plugin_dir = abs_path + '/plugins'
+plugin_dir = __file__.split(__file__.split("/")[-1])[0] + '/plugins'
+sys.path.append(plugin_dir)
 try:
     for module in os.listdir(plugin_dir):
         if module == '__init__.py' or module[-3:] != '.py':
@@ -98,7 +106,7 @@ plugin_error_dict = {
 }
 
 
-class FFDCCollector:
+class ffdc_collector:
 
     r"""
     Execute commands from configuration file to collect log files.
@@ -154,9 +162,9 @@ class FFDCCollector:
         # to be sure that all files for this run will have same timestamps
         # and they will be saved in the same directory.
         # self.location == local system for now
-        self.set_ffdc_defaults()
+        self.set_ffdc_default_store_path()
 
-        # Logger for this run.  Need to be after set_ffdc_defaults()
+        # Logger for this run.  Need to be after set_ffdc_default_store_path()
         self.script_logging(getattr(logging, log_level.upper()))
 
         # Verify top level directory exists for storage
@@ -166,7 +174,7 @@ class FFDCCollector:
             # Load default or user define YAML configuration file.
             with open(self.ffdc_config, 'r') as file:
                 try:
-                    self.ffdc_actions = yaml.load(file, Loader=yaml.FullLoader)
+                    self.ffdc_actions = yaml.load(file, Loader=yaml.SafeLoader)
                 except yaml.YAMLError as e:
                     self.logger.error(e)
                     sys.exit(-1)
@@ -181,7 +189,7 @@ class FFDCCollector:
         # Load ENV vars from user.
         self.logger.info("\n\tENV: User define input YAML variables")
         self.env_dict = {}
-        self. load_env()
+        self.load_env()
 
     def verify_script_env(self):
 
@@ -204,9 +212,9 @@ class FFDCCollector:
         self.logger.info("\t{:<10}  {:>9}".format('redfishtool', redfishtool_version))
         self.logger.info("\t{:<10}  {:>12}".format('ipmitool', ipmitool_version))
 
-        if eval(yaml.__version__.replace('.', ',')) < (5, 4, 1):
+        if eval(yaml.__version__.replace('.', ',')) < (5, 3, 0):
             self.logger.error("\n\tERROR: Python or python packages do not meet minimum version requirement.")
-            self.logger.error("\tERROR: PyYAML version 5.4.1 or higher is needed.\n")
+            self.logger.error("\tERROR: PyYAML version 5.3.0 or higher is needed.\n")
             run_env_ok = False
 
         self.logger.info("\t---- End script host environment ----")
@@ -686,7 +694,7 @@ class FFDCCollector:
                 progress_counter += 1
                 self.print_progress(progress_counter)
 
-    def set_ffdc_defaults(self):
+    def set_ffdc_default_store_path(self):
         r"""
         Set a default value for self.ffdc_dir_path and self.ffdc_prefix.
         Collected ffdc file will be stored in dir /self.location/hostname_timestr/.
@@ -704,7 +712,11 @@ class FFDCCollector:
         self.ffdc_prefix = timestr + "_"
         self.validate_local_store(self.ffdc_dir_path)
 
-    def validate_local_store(self, dir_path):
+    # Need to verify local store path exists prior to instantiate this class.
+    # This class method is used to share the same code between CLI input parm
+    # and Robot Framework "${EXECDIR}/logs" before referencing this class.
+    @classmethod
+    def validate_local_store(cls, dir_path):
         r"""
         Ensure path exists to store FFDC files locally.
 
@@ -862,7 +874,7 @@ class FFDCCollector:
             if self.econfig:
                 with open(self.econfig, 'r') as file:
                     try:
-                        tmp_env_dict = yaml.load(file, Loader=yaml.FullLoader)
+                        tmp_env_dict = yaml.load(file, Loader=yaml.SafeLoader)
                     except yaml.YAMLError as e:
                         self.logger.error(e)
                         sys.exit(-1)
@@ -916,7 +928,7 @@ class FFDCCollector:
 
     def execute_plugin_block(self, plugin_cmd_list):
         r"""
-        Pack the plugin command to quailifed python string object.
+        Pack the plugin command to qualifed python string object.
 
         Description of argument(s):
         plugin_list_dict      Plugin block read from YAML

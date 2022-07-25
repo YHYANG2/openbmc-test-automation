@@ -34,7 +34,10 @@ Force Tags               BMC_Code_Update
 *** Variables ***
 
 ${FORCE_UPDATE}          ${0}
-${LOOP_COUNT}            20
+${LOOP_COUNT}            ${2}
+${DELETE_ERRLOGS}        ${1}
+
+${ACTIVATION_WAIT_TIMEOUT}     8 min
 
 *** Test Cases ***
 
@@ -42,10 +45,12 @@ Redfish BMC Code Update
     [Documentation]  Update the firmware image.
     [Tags]  Redfish_BMC_Code_Update
 
-    ${image_version}=  Get Version Tar  ${IMAGE_FILE_PATH}
+    # Python module:  get_version_tar(tar_file_path)
+    ${image_version}=  code_update_utils.Get Version Tar  ${IMAGE_FILE_PATH}
     Rprint Vars  image_version
 
-    ${bmc_release_info}=  Get BMC Release Info
+    # Python module: get_bmc_release_info()
+    ${bmc_release_info}=  utils.Get BMC Release Info
     ${functional_version}=  Set Variable  ${bmc_release_info['version_id']}
     Rprint Vars  functional_version
 
@@ -70,10 +75,37 @@ Redfish BMC Code Update
     Redfish Update Firmware
 
 
+Redfish BMC Code Update Running And Backup Image With Same Firmware
+    [Documentation]  Perform the firmware update with same image back to back, so that
+    ...              the running (functional Image) and backup image (alternate image)
+    ...              with same firmware.
+    [Tags]  Redfish_BMC_Code_Update_Running_And_Backup_Image_With_Same_Firmware
+
+    # Python module:  get_version_tar(tar_file_path)
+    ${image_version}=  code_update_utils.Get Version Tar  ${IMAGE_FILE_PATH}
+    Rprint Vars  image_version
+
+    # Python module: get_bmc_release_info()
+    ${bmc_release_info}=  utils.Get BMC Release Info
+    ${functional_version}=  Set Variable  ${bmc_release_info['version_id']}
+    Rprint Vars  functional_version
+
+    # First update.
+    Print Timen  Performing firmware update ${image_version}.
+    Redfish Update Firmware
+
+    # Second update.
+    Print Timen  Performing firmware update ${image_version}.
+    Redfish Update Firmware
+
+
 Redfish Firmware Update Loop
-    [Documentation]  Update the firmware image in loop.
+    [Documentation]  Update the same firmware image in loop.
     [Tags]  Redfish_Firmware_Update_Loop
     [Template]  Redfish Firmware Update In Loop
+    [Timeout]    NONE
+    # Override default 30 minutes, Disabling timeout with NONE explicitly
+    # else this test will fail for longer loop runs.
 
     ${LOOP_COUNT}
 
@@ -86,7 +118,8 @@ Suite Setup Execution
     Redfish.Login
     # Delete BMC dump and Error logs.
     Run Keyword And Ignore Error  Redfish Delete All BMC Dumps
-    Run Keyword And Ignore Error  Redfish Purge Event Log
+    Run Keyword If  ${DELETE_ERRLOGS} == ${1}
+    ...   Run Keyword And Ignore Error  Redfish Purge Event Log
     # Checking for file existence.
     Valid File Path  IMAGE_FILE_PATH
 
@@ -100,26 +133,25 @@ Redfish Firmware Update In Loop
     # Description of argument(s):
     # update_loop_count    This value is used to run the firmware update in loop.
 
-    ${before_image_state}=  Get BMC Functional Firmware
+    # Python module:  get_version_tar(tar_file_path)
+    ${image_version}=  code_update_utils.Get Version Tar  ${IMAGE_FILE_PATH}
+    Rprint Vars  image_version
+
+    # Python module: get_bmc_release_info()
+    ${bmc_release_info}=  utils.Get BMC Release Info
+    ${functional_version}=  Set Variable  ${bmc_release_info['version_id']}
+    Print Timen  Starting firmware information:
+    Rprint Vars  functional_version
+
     ${temp_update_loop_count}=  Evaluate  ${update_loop_count} + 1
 
     FOR  ${count}  IN RANGE  1  ${temp_update_loop_count}
-      Print Timen  **************************************
-      Print Timen  * The Current Loop Count is ${count} of ${update_loop_count} *
-      Print Timen  **************************************
-      Redfish Update Firmware
-      ${sw_inv}=  Get Functional Firmware  BMC update
-      ${nonfunctional_sw_inv}=  Get Non Functional Firmware  ${sw_inv}  False
-      Run Keyword If  ${nonfunctional_sw_inv['functional']} == False
-      ...  Set BMC Image Priority To Least  ${nonfunctional_sw_inv['version']}  ${nonfunctional_sw_inv}
-      Redfish.Login
-      ${sw_inv}=  Get Functional Firmware  BMC update
-      ${nonfunctional_sw_inv}=  Get Non Functional Firmware  ${sw_inv}  False
-      Delete BMC Image
+       Print Timen  **************************************
+       Print Timen  * The Current Loop Count is ${count} of ${update_loop_count} *
+       Print Timen  **************************************
+       Print Timen  Performing firmware update ${image_version}.
+       Redfish Update Firmware
     END
-
-    ${after_image_state}=  Get BMC Functional Firmware
-    Valid Value  before_image_state["version"]  ['${after_image_state["version"]}']
 
 
 Delete BMC Image
@@ -222,9 +254,31 @@ Redfish Update Firmware
     ${state}=  Get Pre Reboot State
     Rprint Vars  state
     Run Keyword And Ignore Error  Set ApplyTime  policy=OnReset
-    Redfish Upload Image And Check Progress State
-    ${tar_version}=  Get Version Tar  ${image_file_path}
+
+    # Python module:  get_member_list(resource_path)
+    ${before_inv_list}=  redfish_utils.Get Member List  /redfish/v1/UpdateService/FirmwareInventory
+    Log To Console   Current images on the BMC before upload: ${before_inv_list}
+
+    Print Timen  Start uploading image to BMC.
+    Redfish Upload Image  /redfish/v1/UpdateService  ${IMAGE_FILE_PATH}
+    Print Timen  Completed image upload to BMC.
+
+    # Python module:  get_member_list(resource_path)
+    ${after_inv_list}=  redfish_utils.Get Member List  /redfish/v1/UpdateService/FirmwareInventory
+    Log To Console  Current images on the BMC after upload: ${after_inv_list}
+
+    ${image_id}=  Evaluate  set(${after_inv_list}) - set(${before_inv_list})
+    Should Not Be Empty    ${image_id}
+    ${image_id}=  Evaluate  list(${image_id})[0].split('/')[-1]
+    Log To Console  Firmware installation in progress with image id:: ${image_id}
+
+    Wait Until Keyword Succeeds  ${ACTIVATION_WAIT_TIMEOUT}  10 sec
+    ...  Check Image Update Progress State  match_state='Enabled'  image_id=${image_id}
+
+    # Python module:  get_version_tar(tar_file_path)
+    ${tar_version}=  code_update_utils.Get Version Tar  ${IMAGE_FILE_PATH}
     ${image_info}=  Get Software Inventory State By Version  ${tar_version}
+
     Run Key  ${post_code_update_actions['${image_info["image_type"]}']['OnReset']}
     Redfish.Login
     Redfish Verify BMC Version  ${image_file_path}

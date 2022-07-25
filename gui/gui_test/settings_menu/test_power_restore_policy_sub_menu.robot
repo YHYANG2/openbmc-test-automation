@@ -17,7 +17,6 @@ ${xpath_AlwaysOff_radio}               //input[@value='AlwaysOff']
 ${xpath_LastState_radio}               //input[@value='LastState']
 ${xpath_save_settings_button}          //button[contains(text(),'Save settings')]
 
-
 *** Test Cases ***
 
 Verify Navigation To Power Restore Policy Page
@@ -36,7 +35,7 @@ Verify Existence Of All Sections In Power Restore Policy Page
 
 Verify Existence Of All Buttons In Power Restore Policy Page
     [Documentation]  Verify existence of All Buttons.
-    [Tags]  Verify_Existence_Of_All_Buttons
+    [Tags]  Verify_Existence_Of_All_Buttons_In_Power_Restore_Policy_Page
 
     Page Should Contain Element  ${xpath_AlwaysOn_radio}
     Page Should Contain Element  ${xpath_AlwaysOff_radio}
@@ -52,3 +51,4 @@ Test Setup Execution
     Click Element  ${xpath_settings_menu}
     Click Element  ${xpath_power_restore_policy_sub_menu}
     Wait Until Keyword Succeeds  30 sec  10 sec  Location Should Contain  power-restore-policy
+    Wait Until Element Is Not Visible   ${xpath_page_loading_progress_bar}  timeout=30

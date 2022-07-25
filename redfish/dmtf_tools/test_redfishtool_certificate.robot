@@ -19,7 +19,7 @@ Suite Setup       Suite Setup Execution
 *** Variables ***
 
 ${root_cmd_args} =  SEPARATOR=
-...  redfishtool raw -r ${OPENBMC_HOST} -u ${OPENBMC_USERNAME} -p ${OPENBMC_PASSWORD} -S Always
+...  redfishtool raw -r ${OPENBMC_HOST}:${HTTPS_PORT} -u ${OPENBMC_USERNAME} -p ${OPENBMC_PASSWORD} -S Always
 
 ${invalid_value}  abc
 
@@ -129,7 +129,7 @@ Verify Error While Uploading Same CA Certificate Via Redfishtool
 
 Install Server Certificate Using Redfishtool And Verify Via OpenSSL
     [Documentation]  Install server certificate using Redfishtool and verify via OpenSSL.
-    [Tags]  Install_Server_Certificate_Using_Redfishtool_And_Verify_Via_OpenSSL.
+    [Tags]  Install_Server_Certificate_Using_Redfishtool_And_Verify_Via_OpenSSL
 
     ${cert_file_path}=  Generate Certificate File Via Openssl  Valid Certificate Valid Privatekey
     ${bytes}=  OperatingSystem.Get Binary File  ${cert_file_path}

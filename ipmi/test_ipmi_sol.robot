@@ -6,6 +6,7 @@ Resource            ../lib/state_manager.robot
 Resource            ../lib/boot_utils.robot
 Resource            ../lib/bmc_redfish_resource.robot
 Library             ../lib/ipmi_utils.py
+Variables           ../data/ipmi_raw_cmd_table.py
 
 Test Setup          Start SOL Console Logging
 Test Teardown       Test Teardown Execution
@@ -16,6 +17,11 @@ Force Tags          SOL_Test
 
 
 *** Variables ***
+
+@{valid_bit_rates}    ${9.6}  ${19.2}  ${38.4}  ${57.6}  ${115.2}
+@{setinprogress}      set-complete  set-in-progress  commit-write
+${invalid_bit_rate}   7.5
+
 
 *** Test Cases ***
 
@@ -117,19 +123,31 @@ Set Invalid SOL Character Send Threshold
 
 
 Verify SOL During Boot
-    [Documentation]  Verify SOL during boot.
+    [Documentation]  Verify SOL activate console output during boot.
     [Tags]  Verify_SOL_During_Boot
-    Redfish Hard Power Off  stack_mode=skip
+
+    IPMI Power Off  stack_mode=skip
     Activate SOL Via IPMI
     Initiate Host Boot Via External IPMI  wait=${0}
 
-    Wait Until Keyword Succeeds  3 mins  15 secs
-    ...  Check IPMI SOL Output Content  Processor Type
+    Should Not Be Empty  ${SOL_BIOS_OUTPUT}
+    Should Not Be Empty  ${SOL_LOGIN_OUTPUT}
 
-    Wait Until Keyword Succeeds  15 mins  15 secs
-    ...  Check IPMI SOL Output Content  cs20-desktop
+    # Content takes maximum of 10 minutes to display in SOL console
+    # SOL_BIOS_OUTPUT - BIOS SOL console output
+    ${status}=  Run Keyword And Return Status  Wait Until Keyword Succeeds  10 mins  15 secs
+    ...  Check IPMI SOL Output Content  ${SOL_BIOS_OUTPUT}
 
-    Redfish Hard Power Off
+    Run Keyword If  '${status}' == 'False'
+    ...  Run Keywords  IPMI Power Off  AND  FAIL  msg=BIOS not loaded.
+
+    # SOL_LOGIN_OUTPUT - SOL output login prompt
+    # Once host reboot completes, SOL console may take maximum of 15 minutes to get the login prompt.
+    ${status}=  Run Keyword And Return Status  Wait Until Keyword Succeeds  15 mins  15 secs
+    ...  Check IPMI SOL Output Content  ${SOL_LOGIN_OUTPUT}
+
+    Run Keyword If  '${status}' == 'False'
+    ...  IPMI Power Off
 
 
 Verify Deactivate Non Existing SOL
@@ -186,15 +204,100 @@ Verify Continuous Activation And Deactivation Of SOL
     END
 
 
+Verify SOL Payload Channel
+    [Documentation]  Verify SOL payload channel from SOL info.
+    [Tags]  Verify_SOL_Payload_Channel
+
+    # Get channel number from SOL Info and verify it is not empty.
+    ${payload_channel}=  Get SOL Setting  Payload Channel
+    Should Not Be Empty  ${payload_channel}
+
+
+Verify SOL Payload Port
+    [Documentation]  Verify SOL payload port from SOL info.
+    [Tags]  Verify_SOL_Payload_Port
+
+    # Get Payload Port from SOL Info and verify it equal with ipmi port.
+    ${payload_port}=  Get SOL Setting  Payload Port
+    Should Be Equal  ${IPMI_PORT}  ${payload_port}
+
+
+Set Valid SOL Non Volatile Bit Rate
+    [Documentation]  Verify ability to set valid SOL non-volatile bit rate.
+    [Tags]  Set_Valid_SOL_Non_Volatile_Bit_Rate
+
+    FOR  ${bit_rate}  IN  @{valid_bit_rates}
+
+      # Set valid non-volatile-bit-rate from SOL Info.
+      Run Keyword And Expect Error  *Parameter not supported*
+      ...  Run IPMI Standard Command
+      ...  sol set non-volatile-bit-rate ${bit_rate}
+
+    END
+
+
+Set Invalid SOL Non Volatile Bit Rate
+    [Documentation]  Verify ability to set invalid SOL non-volatile bit rate.
+    [Tags]  Set_Invalid_SOL_Non_Volatile_Bit_Rate
+
+    # Set Invalid non-volatile-bit-rate from SOL Info.
+    ${resp} =  Run Keyword and Expect Error  *${IPMI_RAW_CMD['SOL']['Set_SOL'][0]}*
+    ...  Run IPMI Standard Command  sol set non-volatile-bit-rate ${invalid_bit_rate}
+
+    # Compares whether valid values are displayed.
+    Should Contain  ${resp}  ${IPMI_RAW_CMD['SOL']['Set_SOL'][1]}  ignore_case=True
+
+
+Set Valid SOL Volatile Bit Rate
+    [Documentation]  Verify ability to set valid SOL volatile bit rate.
+    [Tags]  Set_Valid_SOL_Volatile_Bit_Rate
+
+    FOR  ${bit_rate}  IN  @{valid_bit_rates}
+
+      # Set valid volatile-bit-rate from SOL Info.
+      Run Keyword and Expect Error  *Parameter not supported*
+      ...  Run IPMI Standard Command
+      ...  sol set volatile-bit-rate ${bit_rate}
+
+    END
+
+
+Set Invalid SOL Volatile Bit Rate
+    [Documentation]  Verify ability to set invalid SOL volatile bit rate.
+    [Tags]  Set_Invalid_SOL_Volatile_Bit_Rate
+
+    # Set invalid volatile-bit-rate from SOL Info.
+    ${resp} =  Run Keyword and Expect Error  *${IPMI_RAW_CMD['SOL']['Set_SOL'][0]}*
+    ...  Run IPMI Standard Command  sol set volatile-bit-rate ${invalid_bit_rate}
+
+    # Compares whether valid values are displayed.
+    Should Contain  ${resp}  ${IPMI_RAW_CMD['SOL']['Set_SOL'][1]}  ignore_case=True
+
+
+Verify SOL Set In Progress
+    [Documentation]  Verify ability to set the set in-progress data for SOL.
+    [Tags]  Verify_SOL_Set_In_Progress
+    [Teardown]  Run Keywords  Set SOL Setting  set-in-progress  set-complete
+    ...         AND  Test Teardown Execution
+
+    # Set the param 0 - set-in-progress from SOL Info.
+    FOR  ${prog}  IN  @{setinprogress}
+       Run Keyword  Run IPMI Standard Command  sol set set-in-progress ${prog}
+       # Get the param 0 - set-in-progress from SOL Info and verify.
+       ${set_inprogress_state}=  Get SOL Setting  Set in progress
+       Should Be Equal  ${prog}  ${set_inprogress_state}
+    END
+
+
 *** Keywords ***
 
 Check IPMI SOL Output Content
     [Documentation]  Check if SOL has given content.
-    [Arguments]  ${data}  ${file_path}=/tmp/sol_${OPENBMC_HOST}
+    [Arguments]  ${data}  ${file_path}=${IPMI_SOL_LOG_FILE}
     # Description of argument(s):
     # data       Content which need to be checked(e.g. Petitboot, ISTEP).
     # file_path  The file path on the local machine to check SOL content.
-    #            By default it check SOL content from /tmp/sol_<BMC_IP>.
+    #            By default it check SOL content from log/sol_<BMC_IP>.
 
     ${output}=  OperatingSystem.Get File  ${file_path}  encoding_errors=ignore
     Should Contain  ${output}  ${data}  case_insensitive=True
@@ -239,7 +342,7 @@ Verify SOL Setting
 
     Should Be Equal  '${setting_value}'  '${expected_value}'
 
-    Redfish Hard Power Off  stack_mode=skip
+    IPMI Power Off  stack_mode=skip
 
     Initiate Host Boot Via External IPMI  wait=${0}
 

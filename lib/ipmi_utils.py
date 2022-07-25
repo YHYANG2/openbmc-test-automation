@@ -691,7 +691,7 @@ def get_user_access_ipmi(channel_number=1):
     return vf.outbuf_to_report(stdout)
 
 
-def get_channel_auth_capabilities(channel_number=1):
+def get_channel_auth_capabilities(channel_number=1, privilege_level=4):
     r"""
     Get the channel authentication capabilities and return as a dictionary.
 
@@ -711,7 +711,89 @@ def get_channel_auth_capabilities(channel_number=1):
     """
 
     status, ret_values = \
-        grk.run_key_u("Run IPMI Standard Command  channel authcap " + str(channel_number) + " 4")
+        grk.run_key_u("Run IPMI Standard Command  channel authcap " + str(channel_number) + " "
+                      + str(privilege_level))
     result = vf.key_value_outbuf_to_dict(ret_values, process_indent=1)
 
     return result
+
+
+def fetch_date(date):
+    r"""
+    Removes prefix 0 in a date in given date
+
+    Example : 08/12/2021 then returns 8/12/2021
+    """
+
+    date = date.lstrip("0")
+    return date
+
+
+def fetch_added_sel_date(entry):
+    r"""
+    Split sel entry string with with | and join only the date with space
+
+    Example : If entry given is, "a | 02/14/2020 | 01:16:58 | Sensor_type #0x17 |  | Asserted"
+    Then the result will be "02/14/2020 01:16:58"
+    """
+
+    temp = entry.split(" | ")
+    date = temp[1] + " " + temp[2]
+    print(date)
+    return date
+
+
+def prefix_bytes(listx):
+    r"""
+    prefixes byte strings in list
+
+    Example:
+    ${listx} = ['01', '02', '03']
+    ${listx}=  Prefix Bytes  ${listx}
+    then,
+    ${listx}= ['0x01', '0x02', '0x03']
+
+    """
+
+    listy = []
+    for item in listx:
+        item = "0x" + item
+        listy.append(item)
+    return listy
+
+
+def modify_and_fetch_threshold(old_threshold, threshold_list):
+    r"""
+    Description of argument(s):
+
+        old_threshold              List of threshold values of sensor,
+        threshold_list             List of higher and lower of critical and non-critical values.
+                                   i,e [ "lcr", "lnc", "unc", "ucr" ]
+
+    Gets old threshold values from sensor and threshold levels,
+    then returns the list of new threshold and the dict of threshold levels
+
+    For example :
+    1. If old_threshold list is [ 1, 2, 3, 4] then the newthreshold_list will be [ 101, 102, 103, 104 ].
+       If old_threshold has 'na' the same will be appended to new list, eg: [ 101, 102, 103, 104, 'na'].
+
+    2. The newthreshold_list will be zipped to dictionary with threshold_list levels,
+       Example : threshold_dict = { 'lcr': 101, 'lnc': 102, 'unc': 103, 'ucr': 104 }
+
+    """
+
+    # Adding the difference of 100 as less than this value,
+    # may not have greater impact as the sensor considered is a fan sensor.
+    # The set threshold may round off for certain values below 100.
+    n = 100
+    newthreshold_list = []
+    for th in old_threshold:
+        th = th.strip()
+        if th == 'na':
+            newthreshold_list.append('na')
+        else:
+            x = int(float(th)) + n
+            newthreshold_list.append(x)
+            n = n + 100
+    threshold_dict = dict(zip(threshold_list, newthreshold_list))
+    return newthreshold_list, threshold_dict

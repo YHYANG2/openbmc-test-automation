@@ -77,9 +77,8 @@ Test BMC Websocket Dump Interface
     [Tags]  Test_BMC_Websocket_Dump_Interface
 
     Redfish Delete All BMC Dumps
-
-    Start Websocket Monitor  dump/bmc
-    ${dump_id}=  Create User Initiated BMC Dump Using Redfish
+    Start Websocket Monitor  dump
+    ${dump_id}=  Create User Initiated BMC Dump Via Redfish
     Check Existence Of BMC Dump File  ${dump_id}
 
     # Check that the monitor received notification of the dump.

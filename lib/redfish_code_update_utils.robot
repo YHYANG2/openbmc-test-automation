@@ -16,7 +16,9 @@ Get Software Functional State
     # Description of argument(s):
     # image_id   The image ID (e.g. "acc9e073").
 
-    ${image_info}=  Redfish.Get Properties  /redfish/v1/UpdateService/FirmwareInventory/${image_id}
+    ${resp}=  Redfish.Get  /redfish/v1/UpdateService/FirmwareInventory/${image_id}
+    ...  valid_status_codes=[${HTTP_OK}, ${HTTP_INTERNAL_SERVER_ERROR}]
+    ${image_info}  Set Variable  ${resp.dict}
 
     ${sw_functional}=  Run Keyword If
     ...   '${image_info["Description"]}' == 'BMC image' or '${image_info["Description"]}' == 'BMC update'
@@ -27,7 +29,39 @@ Get Software Functional State
     ${functional}=  Run Keyword And Return Status
     ...   Should Be Equal  ${sw_functional}  ${image_info["Version"]}
 
+    # If they are not same, return from here.
+    Return From Keyword If  '${functional}' == 'False'  ${functional}
+
+    # WHen the functional and backup firmware versions are same, this ensure, we rightly set the
+    # test inventory dictionary for the firmware functional status.
+    Run Keyword If
+    ...   '${image_info["Description"]}' == 'BMC image' or '${image_info["Description"]}' == 'BMC update'
+    ...   Run Keyword And Return  Find Active Software Image  ${image_id}
+
     [Return]  ${functional}
+
+
+Find Active Software Image
+    [Documentation]  Match the firmware id of ActiveSoftwareImage attribute with the input id.
+    ...              The ActiveSoftwareImage id is the current functional BMC firmware.
+    [Arguments]  ${image_id}
+
+    # Description of argument(s):
+    # image_id   The image ID (e.g. "acc9e073").
+
+    # This attribute tells which is the firmware version currently functional.
+    # "ActiveSoftwareImage": {
+    #         "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/5ca9fec0"
+    #     },
+    ${active_sw_img}=  Redfish.Get Attribute  /redfish/v1/Managers/bmc  Links
+
+    ${active_id}=  Set Variable  ${active_sw_img["ActiveSoftwareImage"]["@odata.id"].split("/")[-1]}
+
+    ${matched_functional}=  Run Keyword And Return Status
+    ...  Should Be Equal As Strings  ${image_id}  ${active_id}
+
+    # Returns True if matched else False.
+    [Return]  ${matched_functional}
 
 
 Get Software Inventory State
@@ -63,10 +97,15 @@ Get Software Inventory State
 
     FOR  ${uri_path}  IN  @{sw_member_list}
         &{tmp_dict}=  Create Dictionary
-        ${image_info}=  Redfish.Get Properties  ${uri_path}
+
+        ${resp}=  Redfish.Get  ${uri_path}  valid_status_codes=[${HTTP_OK}, ${HTTP_INTERNAL_SERVER_ERROR}]
+        ${image_info}  Set Variable  ${resp.dict}
+
         Set To Dictionary  ${tmp_dict}  image_type  ${image_info["Description"]}
         Set To Dictionary  ${tmp_dict}  image_id  ${uri_path.split("/")[-1]}
+
         ${functional}=  Get Software Functional State  ${uri_path.split("/")[-1]}
+
         Set To Dictionary  ${tmp_dict}  functional  ${functional}
         Set To Dictionary  ${tmp_dict}  version  ${image_info["Version"]}
         Set To Dictionary  ${sw_inv_dict}  ${uri_path.split("/")[-1]}  ${tmp_dict}

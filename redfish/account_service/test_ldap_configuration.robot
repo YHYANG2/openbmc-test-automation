@@ -15,7 +15,7 @@ Test Teardown    FFDC On Test Case Fail
 Force Tags       LDAP_Test
 
 *** Variables ***
-${old_ldap_privilege}   ${EMPTY}
+${old_ldap_privilege}   Administrator
 &{old_account_service}  &{EMPTY}
 &{old_ldap_config}      &{EMPTY}
 ${hostname}             ${EMPTY}
@@ -85,7 +85,8 @@ Verify LDAP Login With Correct AuthenticationType
 
 Verify LDAP Config Update With Incorrect AuthenticationType
     [Documentation]  Verify that invalid AuthenticationType is not updated.
-    [Tags]  Verify_LDAP_Update_With_Incorrect_AuthenticationType
+    [Tags]  Verify_LDAP_Config_Update_With_Incorrect_AuthenticationType
+
     ${body}=  Catenate  {'${ldap_type}': {'Authentication': {'AuthenticationType':'KerberosKeytab'}}}
 
     Redfish.Patch  ${REDFISH_BASE_URI}AccountService
@@ -170,15 +171,28 @@ Verify LDAP User With Operator Privilege Able To Do Host Poweroff
     Redfish.Login
 
 
-Verify AccountLockout Attributes Set To Zero
+Verify AccountLockout Attributes Set To Zero By LDAP User
     [Documentation]  Verify that attribute AccountLockoutDuration and
-    ...  AccountLockoutThreshold are set to 0.
+    ...  AccountLockoutThreshold are set to 0 by LDAP user.
     [Teardown]  Run Keywords  Restore AccountLockout Attributes  AND
     ...  FFDC On Test Case Fail
-    [Tags]  Verify_AccountLockout_Attributes_Set_To_Zero
+    [Tags]  Verify_AccountLockout_Attributes_Set_To_Zero_By_LDAP_User
+
     ${old_account_service}=  Redfish.Get Properties
     ...  ${REDFISH_BASE_URI}AccountService
     Rprint Vars  old_account_service
+
+    # Create LDAP user and create session using LDAP user.
+    Update LDAP Configuration with LDAP User Role And Group  ${LDAP_TYPE}
+    ...  Administrator  ${GROUP_NAME}
+
+    # Clear existing Redfish sessions.
+    Redfish.Logout
+
+    # Login using LDAP user.
+    Redfish.Login  ${LDAP_USER}  ${LDAP_USER_PASSWORD}
+
+    # Set Account Lockout attributes using LDAP user.
     Redfish.Patch  ${REDFISH_BASE_URI}AccountService
     ...  body=[('AccountLockoutDuration', 0)]
     Redfish.Patch  ${REDFISH_BASE_URI}AccountService
@@ -250,7 +264,7 @@ Verify LDAP BindDN Update And LDAP Login
 Verify LDAP BindDN Password Update And LDAP Login
     [Documentation]  Update LDAP BindDN password of LDAP configuration and
     ...  verify that LDAP login works.
-    [Tags]  Verify_LDAP_BindDN_Passsword_Update_And_LDAP_Login
+    [Tags]  Verify_LDAP_BindDN_Password_Update_And_LDAP_Login
 
     ${body}=  Catenate  {'${LDAP_TYPE}': { 'Authentication':
     ...   {'AuthenticationType':'UsernameAndPassword', 'Password':
@@ -271,7 +285,7 @@ Verify LDAP Type Update And LDAP Login
     Redfish Verify LDAP Login
 
 
-Verify Authorization With Null Privilege
+Verify LDAP Authorization With Null Privilege
     [Documentation]  Verify the failure of LDAP authorization with empty
     ...  privilege.
     [Tags]  Verify_LDAP_Authorization_With_Null_Privilege
@@ -281,7 +295,7 @@ Verify Authorization With Null Privilege
     ...  [${HTTP_FORBIDDEN}]
 
 
-Verify Authorization With Invalid Privilege
+Verify LDAP Authorization With Invalid Privilege
     [Documentation]  Verify that LDAP user authorization with wrong privilege
     ...  fails.
     [Tags]  Verify_LDAP_Authorization_With_Invalid_Privilege
@@ -466,7 +480,7 @@ Configure IP Address Via Different User Roles And Verify
     ${LDAP_TYPE}  NoAccess         ${GROUP_NAME}  ${HTTP_FORBIDDEN}
 
     # Verify LDAP user with Operator privilege is able to configure IP address.
-    ${LDAP_TYPE}  Operator         ${GROUP_NAME}  ${HTTP_OK}
+    ${LDAP_TYPE}  Operator         ${GROUP_NAME}  ${HTTP_FORBIDDEN}
 
 
 Delete IP Address Via Different User Roles And Verify
@@ -485,12 +499,12 @@ Delete IP Address Via Different User Roles And Verify
     ${LDAP_TYPE}  NoAccess         ${GROUP_NAME}  ${HTTP_FORBIDDEN}
 
     # Verify LDAP user with Operator privilege is able to delete IP address.
-    ${LDAP_TYPE}  Operator         ${GROUP_NAME}  ${HTTP_OK}
+    ${LDAP_TYPE}  Operator         ${GROUP_NAME}  ${HTTP_FORBIDDEN}
 
 
 Read Network Configuration Via Different User Roles And Verify
     [Documentation]  Read network configuration via different user roles and verify.
-    [Tags]  Read_Network_configuration_Via_Different_User_Roles_And_Verify
+    [Tags]  Read_Network_Configuration_Via_Different_User_Roles_And_Verify
     [Teardown]  Restore LDAP Privilege
 
     [Template]  Update LDAP User Role And Read Network Configuration
@@ -563,7 +577,8 @@ Update LDAP Config And Verify Set Host Name
     [Documentation]  Update LDAP config and verify by attempting to set host name.
     [Arguments]  ${group_name}  ${group_privilege}=Administrator
     ...  ${valid_status_codes}=[${HTTP_OK}]
-    [Teardown]  Run Keywords  Redfish.Logout  AND  Redfish.Login
+    [Teardown]  Run Keyword If  '${group_privilege}'=='NoAccess'  Redfish.Login
+                ...  ELSE  Run Keywords  Redfish.Logout  AND  Redfish.Login
 
     # Description of argument(s):
     # group_name                    The group name of user.
@@ -575,12 +590,21 @@ Update LDAP Config And Verify Set Host Name
     #                               method in redfish_plut.py for details.
     Update LDAP Configuration with LDAP User Role And Group  ${LDAP_TYPE}
     ...  ${group_privilege}  ${group_name}
+
+    Run Keyword If  '${group_privilege}'=='NoAccess'
+    ...  Run Keyword And Return  Verify Redfish Login for LDAP Userrole NoAccess
+
     Redfish.Login  ${LDAP_USER}  ${LDAP_USER_PASSWORD}
     # Verify that the LDAP user in ${group_name} with the given privilege is
     # allowed to change the hostname.
     Redfish.Patch  ${REDFISH_NW_ETH0_URI}  body={'HostName': '${hostname}'}
     ...  valid_status_codes=${valid_status_codes}
 
+Verify Redfish Login for LDAP Userrole NoAccess
+    [Documentation]  Verify Redfish login should not be able to login for LDAP Userrole NoAccess.
+
+    ${status}=  Run Keyword And Return Status  Redfish.Login  ${LDAP_USER}  ${LDAP_USER_PASSWORD}
+    Valid Value  status  [${False}]
 
 Disable Other LDAP
     [Documentation]  Disable other LDAP configuration.
@@ -649,8 +673,6 @@ Suite Setup Execution
     Redfish.Login
     # Call 'Get LDAP Configuration' to verify that LDAP configuration exists.
     Get LDAP Configuration  ${LDAP_TYPE}
-    Set Olympus LDAP Privilege
-    ${old_ldap_privilege}=  Get LDAP Privilege
     Set Suite Variable  ${old_ldap_privilege}
     Disable Other LDAP
     Create LDAP Configuration
@@ -734,6 +756,8 @@ Get LDAP Privilege
 
 Restore LDAP Privilege
     [Documentation]  Restore the LDAP privilege to its original value.
+
+    Redfish.Login
     Return From Keyword If  '${old_ldap_privilege}' == '${EMPTY}' or '${old_ldap_privilege}' == '[]'
     # Log back in to restore the original privilege.
     Update LDAP Configuration with LDAP User Role And Group  ${LDAP_TYPE}
@@ -741,6 +765,15 @@ Restore LDAP Privilege
 
     Sleep  18s
 
+Verify Host Power Status
+    [Documentation]  Verify the Host power status and do host power on/off respectively.
+    [Arguments]  ${expected_power_status}
+
+    ${power_status}=  Redfish.Get Attribute  /redfish/v1/Chassis/${CHASSIS_ID}  PowerState
+    Return From Keyword If  '${power_status}' == '${expected_power_status}'
+
+    Run Keyword If  '${power_status}' == 'Off'  Redfish Power On
+    ...  ELSE  Redfish Power Off
 
 Update LDAP User Role And Host Poweroff
     [Documentation]  Update LDAP user role and do host poweroff.
@@ -753,6 +786,9 @@ Update LDAP User Role And Host Poweroff
     # group_name         The group name of user.
     # valid_status_code  The expected valid status code.
 
+    # check Host state and do the power on/off if needed.
+    Verify Host Power Status  On
+
     Update LDAP Configuration with LDAP User Role And Group  ${ldap_type}
     ...  ${group_privilege}  ${group_name}
 
@@ -760,11 +796,6 @@ Update LDAP User Role And Host Poweroff
 
     Redfish.Post  ${REDFISH_POWER_URI}
     ...  body={'ResetType': 'ForceOff'}   valid_status_codes=[${valid_status_code}]
-
-    # to avoid no access user logout error, login first
-    Run Keyword If  '${group_privilege}' == 'NoAccess'
-    ...  Redfish.Login
-
 
 Update LDAP User Role And Host Poweron
     [Documentation]  Update LDAP user role and do host poweron.
@@ -776,6 +807,9 @@ Update LDAP User Role And Host Poweron
     # group_privilege    The group privilege ("Administrator", "Operator", "ReadOnly" or "NoAccess").
     # group_name         The group name of user.
     # valid_status_code  The expected valid status code.
+
+    # check Host state and do the power on/off if needed.
+    Verify Host Power Status  Off
 
     Update LDAP Configuration with LDAP User Role And Group  ${ldap_type}
     ...  ${group_privilege}  ${group_name}

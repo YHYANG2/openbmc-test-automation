@@ -113,6 +113,9 @@ Get Host State Attribute
     # host_attribute   Host attribute name.
     # quiet            Suppress REST output logging to console.
 
+    ${HOST_STATE_URI}=  Set Variable If  '${PLATFORM_ARCH_TYPE}' == 'x86' and '${host_attribute}' == 'OperatingSystemState'
+    ...  ${OS_STATE_URI}  ${HOST_STATE_URI}
+
     ${state}=
     ...  Read Attribute  ${HOST_STATE_URI}  ${host_attribute}  quiet=${quiet}
     [Return]  ${state}
@@ -334,3 +337,12 @@ Power Off Request
 Wait For BMC Ready
     [Documentation]  Check BMC state and wait for BMC Ready.
     Wait Until Keyword Succeeds  10 min  10 sec  Is BMC Ready
+
+
+Get Host State Via Redfish
+    [Documentation]  Return the state of the host Via Redfish as a string.
+
+    ${powerstate}=
+    ...  Redfish.Get Attribute  ${REDFISH_CHASSIS_URI}/${CHASSIS_ID}  PowerState
+
+    [Return]  ${powerstate}

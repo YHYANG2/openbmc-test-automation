@@ -1,9 +1,9 @@
 *** Settings ***
 Documentation       This suite is for Verifying BMC device tree.
 
-Resource            ../../lib/utils.robot
-Resource            ../../lib/openbmc_ffdc.robot
-Resource            ../../lib/ipmi_client.robot
+Resource            ../lib/utils.robot
+Resource            ../lib/openbmc_ffdc.robot
+Resource            ../lib/ipmi_client.robot
 Library             String
 
 Suite Setup         Open Connection And Log In
@@ -66,7 +66,63 @@ Check BMC Memory Device Type Property Is Set
    [Template]  Template Check Property
 
    #Property
-   memory/device_type
+   memory@80000000/device_type
+
+
+Check BMC FSI Name Property Is Set
+   [Documentation]  Verify if the BMC FSI name property is populated.
+   [Tags]  Check_BMC_FSI_Name_Property_Is_Set
+   [Template]  Template Check Property
+
+   #Property
+   gpio-fsi/name
+
+
+Check BMC FSI Compatible Property Is Set
+   [Documentation]  Verify if the BMC FSI compatible property is populated.
+   [Tags]  Check_BMC_FSI_Compatible_Property_Is_Set
+   [Template]  Template Check Property
+
+   #Property
+   gpio-fsi/compatible
+
+
+Check BMC GPIO FSI Name Property Is Set
+   [Documentation]  Verify if the BMC GPIO-FSI name property is populated.
+   [Tags]  Check_BMC_GPIO_FSI_Name_Property_Is_Set
+   [Template]  Template Check Property
+
+   #Property
+   gpio-fsi/name
+
+
+Check BMC GPIO FSI Compatible Property Is Set
+   [Documentation]  Verify if the BMC GPIO-FSI compatible property is populated.
+   [Tags]  Check_BMC_GPIO_FSI_Compatible_Property_Is_Set
+   [Template]  Template Check Property
+
+   #Property
+   gpio-fsi/compatible
+
+
+Check BMC GPIO Keys Name Property Is Set
+   [Documentation]  Verify if the BMC GPIO-keys name property is
+   ...  populated.
+   [Tags]  Check_BMC_GPIO_Keys_Name_Property_Is_Set
+   [Template]  Template Check Property
+
+   #Property
+   gpio-keys/name
+
+
+Check BMC GPIO Keys Compatible Property Is Set
+   [Documentation]  Verify if the BMC GPIO-keys compatible property is
+   ...  populated.
+   [Tags]  Check_BMC_GPIO_Keys_Compatible_Property_Is_Set
+   [Template]  Template Check Property
+
+   #Property
+   gpio-keys/compatible
 
 
 Check BMC IIO-HWMON Name Property Is Set

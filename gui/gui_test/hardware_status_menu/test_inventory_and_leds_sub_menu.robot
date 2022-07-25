@@ -4,15 +4,14 @@ Documentation   Test OpenBMC GUI "Inventory and LEDs" sub-menu of "Hardware stat
 
 Resource        ../../lib/gui_resource.robot
 
-Suite Setup     Launch Browser And Login GUI
+Suite Setup     Suite Setup Execution
 Suite Teardown  Close Browser
-Test Setup      Test Setup Execution
 
 
 *** Variables ***
 
-${xpath_inventory_and_leds_heading}  //h1[text()="Inventory and LEDs"]
-
+${xpath_inventory_and_leds_heading}         //h1[text()="Inventory and LEDs"]
+${xpath_page_loading_progress_ba}           //*[@aria-label='Page loading progress bar']
 *** Test Cases ***
 
 Verify Navigation To Inventory And LEDs Page
@@ -33,13 +32,15 @@ Verify Components On Inventory And LEDs Page
     Page Should Contain  Fans
     Page Should Contain  Power supplies
     Page Should Contain  Processors
-
+    Page Should Contain  Assemblies
 
 *** Keywords ***
 
-Test Setup Execution
-    [Documentation]  Do test case setup tasks.
+Suite Setup Execution
+    [Documentation]  Do test suite setup tasks.
 
+    Launch Browser And Login GUI
     Click Element  ${xpath_hardware_status_menu}
     Click Element  ${xpath_inventory_and_leds_sub_menu}
     Wait Until Keyword Succeeds  30 sec  5 sec  Location Should Contain  inventory
+    Wait Until Element Is Not Visible   ${xpath_page_loading_progress_bar}  timeout=30

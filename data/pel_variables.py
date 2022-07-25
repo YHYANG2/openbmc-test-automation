@@ -7,8 +7,8 @@ Contains PEL related constants.
 PEL_DETAILS = {
     'CreatorID': 'BMC',
     'CompID': '0x1000',
-    'Subsystem': 'BMC Firmware',
-    'Message': 'An application had an internal failure',
+    'Subsystem': 'Platform Firmware',
+    'Message': 'This is a test error',
     'SRC': 'BD8D1002',
     'Sev': 'Unrecoverable Error'}
 
@@ -31,10 +31,11 @@ CMD_INFORMATIONAL_ERROR = ERROR_LOG_CREATE_BASE_CMD + 'xyz.openbmc_project.Commo
 CMD_INVENTORY_PREFIX = 'busctl get-property xyz.openbmc_project.Inventory.Manager \
     /xyz/openbmc_project/inventory/system/chassis/motherboard'
 
-CMD_UNRECOVERABLE_ERROR = ERROR_LOG_CREATE_BASE_CMD + 'xyz.openbmc_project.Common.Error.InternalFailure \
+CMD_UNRECOVERABLE_ERROR = ERROR_LOG_CREATE_BASE_CMD + 'org.open_power.Logging.Error.TestError1 \
     xyz.openbmc_project.Logging.Entry.Level.Error 0'
 
-CMD_PREDICTIVE_ERROR = ERROR_LOG_CREATE_BASE_CMD + 'xyz.openbmc_project.Common.Error.InternalFailure \
+CMD_PREDICTIVE_ERROR = ERROR_LOG_CREATE_BASE_CMD + \
+    'xyz.openbmc_project.Sensor.Threshold.Error.TemperatureWarningLow \
     xyz.openbmc_project.Logging.Entry.Level.Warning 0'
 
 CMD_UNRECOVERABLE_HOST_ERROR = ERROR_LOG_CREATE_BASE_CMD + 'xyz.openbmc_project.Host.Error.Event \

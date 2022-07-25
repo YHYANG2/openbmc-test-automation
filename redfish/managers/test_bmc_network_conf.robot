@@ -8,9 +8,10 @@ Resource       ../../lib/openbmc_ffdc.robot
 Library        ../../lib/bmc_network_utils.py
 Library        Collections
 
-Test Setup     Test Setup Execution
-Test Teardown  Test Teardown Execution
-Suite Setup    Suite Setup Execution
+Suite Setup     Suite Setup Execution
+Suite Teardown  Suite Teardown Execution
+Test Setup      Test Setup Execution
+Test Teardown   Test Teardown Execution
 
 Force Tags     Network_Conf_Test
 
@@ -117,10 +118,14 @@ Configure Hostname And Verify
     Configure Hostname  ${test_hostname}
     Validate Hostname On BMC  ${test_hostname}
 
+    # Verify configured hostname via redfish.
+    ${new_hostname}=  Redfish_Utils.Get Attribute  ${REDFISH_NW_PROTOCOL_URI}  HostName
+    Should Be Equal  ${new_hostname}  ${test_hostname}
+
 
 Add Valid IPv4 Address And Verify
     [Documentation]  Add IPv4 Address via Redfish and verify.
-    [Tags]  Add_Valid_IPv4_Addres_And_Verify
+    [Tags]  Add_Valid_IPv4_Address_And_Verify
     [Teardown]   Run Keywords
     ...  Delete IP Address  ${test_ipv4_addr}  AND  Test Teardown Execution
 
@@ -128,7 +133,7 @@ Add Valid IPv4 Address And Verify
 
 Add Invalid IPv4 Address And Verify
     [Documentation]  Add Invalid IPv4 Address via Redfish and verify.
-    [Tags]  Add_Invalid_IPv4_Addres_And_Verify
+    [Tags]  Add_Invalid_IPv4_Address_And_Verify
 
     Add IP Address  ${test_ipv4_invalid_addr}  ${test_subnet_mask}
     ...  ${test_gateway}  valid_status_codes=${HTTP_BAD_REQUEST}
@@ -169,8 +174,10 @@ Configure Loopback IP
     ${loopback_ip}  ${test_subnet_mask}  ${test_gateway}  ${HTTP_BAD_REQUEST}
 
 Add Valid IPv4 Address And Check Persistency
-    [Documentation]  Add IPv4 address and check peristency.
-    [Tags]  Add_Valid_IPv4_Addres_And_Check_Persistency
+    [Documentation]  Add IPv4 address and check persistency.
+    [Tags]  Add_Valid_IPv4_Address_And_Check_Persistency
+    [Teardown]  Run Keywords
+    ...  Delete IP Address  ${test_ipv4_addr}  AND  Test Teardown Execution
 
     Add IP Address  ${test_ipv4_addr}  ${test_subnet_mask}  ${test_gateway}
 
@@ -178,7 +185,8 @@ Add Valid IPv4 Address And Check Persistency
     OBMC Reboot (off)
     Redfish.Login
     Verify IP On BMC  ${test_ipv4_addr}
-    Delete IP Address  ${test_ipv4_addr}
+    Verify IP On Redfish URI  ${test_ipv4_addr}
+
 
 Add Fourth Octet Threshold IP And Verify
     [Documentation]  Add fourth octet threshold IP and verify.
@@ -286,7 +294,7 @@ Configure Less Byte Netmask
 
 Configure Threshold Netmask And Verify
     [Documentation]  Configure threshold netmask and verify.
-    [Tags]  Configure_Threshold_Netmask_And_verify
+    [Tags]  Configure_Threshold_Netmask_And_Verify
     [Teardown]  Run Keywords
     ...   Delete IP Address  ${test_ipv4_addr}  AND  Test Teardown Execution
 
@@ -294,7 +302,7 @@ Configure Threshold Netmask And Verify
 
 Configure Lowest Netmask And Verify
     [Documentation]  Configure lowest netmask and verify.
-    [Tags]  Configure_Lowest_Netmask_And_verify
+    [Tags]  Configure_Lowest_Netmask_And_Verify
     [Teardown]  Run Keywords
     ...   Delete IP Address  ${test_ipv4_addr}  AND  Test Teardown Execution
 
@@ -477,7 +485,7 @@ Configure String Value For DNS Server
 
 Modify IPv4 Address And Verify
     [Documentation]  Modify IP address via Redfish and verify.
-    [Tags]  Modify_IPv4_Addres_And_Verify
+    [Tags]  Modify_IPv4_Address_And_Verify
     [Teardown]  Run Keywords
     ...  Delete IP Address  ${test_ipv4_addr2}  AND  Test Teardown Execution
 
@@ -488,7 +496,7 @@ Modify IPv4 Address And Verify
 
 Configure Invalid Values For DNS Server
     [Documentation]  Configure invalid values for DNS server and expect an error.
-    [Tags]  Configure_Invalid_Value_For_DNS_Server
+    [Tags]  Configure_Invalid_Values_For_DNS_Server
     [Setup]  DNS Test Setup Execution
     [Template]  Configure Static Name Servers
     [Teardown]  Run Keywords
@@ -537,12 +545,13 @@ Configure Multiple Static IPv4 Addresses And Check Persistency
     Redfish.Login
     FOR  ${ip}  IN  @{test_ipv4_addresses}
       Verify IP And Netmask On BMC  ${ip}  ${test_subnet_mask}
+      Verify IP On Redfish URI  ${ip}
     END
 
 
 Configure And Verify Multiple IPv4 Addresses
     [Documentation]  Configure multiple IPv4 addresses and verify.
-    [Tags]  Configure_And_Verify_Multiple_IPv4_Addresse
+    [Tags]  Configure_And_Verify_Multiple_IPv4_Addresses
     [Teardown]  Run Keywords
     ...  Delete IP Address  ${test_ipv4_addr}  AND  Delete IP Address  ${test_ipv4_addr2}
     ...  AND  Test Teardown Execution
@@ -624,6 +633,7 @@ Test Network Response On Specified Host State
     # host_state
     on
     off
+
 
 *** Keywords ***
 
@@ -736,11 +746,16 @@ Configure Static Name Servers
 Delete Static Name Servers
     [Documentation]  Delete static name servers.
 
+    DNS Test Setup Execution
     Configure Static Name Servers  static_name_servers=@{EMPTY}
 
     # Check if all name servers deleted on BMC.
     ${nameservers}=  CLI Get Nameservers
-    Should Be Empty  ${nameservers}
+    Should Not Contain  ${nameservers}  ${original_nameservers}
+
+    DNS Test Setup Execution
+
+    Should Be Empty  ${original_nameservers}
 
 DNS Test Setup Execution
     [Documentation]  Do DNS test setup execution.
@@ -757,11 +772,38 @@ DNS Test Setup Execution
     # Set suite variables to trigger restoration during teardown.
     Set Suite Variable  ${original_nameservers}
 
+
 Suite Setup Execution
     [Documentation]  Do suite setup execution.
 
+    # - Get DHCP IPv4 enabled/disabled status from redfish managers URI
+    # - If DHCP IPv4 is enabled ,
+    #   - Get DHCP IPv4 settings - ip address, gateway, subnetmask
+    #   - And set the same as static IP address
+
+    Redfish.Login
+    ${DHCPEnabled}=  Get IPv4 DHCP Enabled Status
+    Set Suite Variable  ${DHCPEnabled}
+
+    Run Keyword If  ${DHCPEnabled}==True
+    ...  Run Keywords
+    ...  ${ip_addr}  ${gateway}  ${subnetmask}=  Get DHCP IP Info  AND
+    ...  Add IP Address  ${ip_addr}  ${subnetmask}  ${gateway}  AND
+    ...  Set Suite Variable  ${ip_addr}
+
     ${test_gateway}=  Get BMC Default Gateway
     Set Suite Variable  ${test_gateway}
+
+
+Suite Teardown Execution
+    [Documentation]  Do suite teardown execution.
+
+    # - If the DHCP IPv4 is enabled before suite setup execution
+    #   - Restore the DHCP IPv4 to enabled state
+
+    Run Keyword If  ${DHCPEnabled}==True
+    ...  Enable IPv4 DHCP Settings
+
 
 Update IP Address
     [Documentation]  Update IP address of BMC.
@@ -856,3 +898,65 @@ Verify Network Response On Specified Host State
     Redfish.Get  ${REDFISH_NW_ETH_IFACE}${ethernet_interface}
     Ping Host  ${OPENBMC_HOST}
 
+
+Verify IP On Redfish URI
+    [Documentation]  Verify given IP on redfish URI.
+    [Arguments]  ${ip_address}
+
+    # Description of argument(s):
+    # ip_address   Configured IP address which need to verified.
+
+    ${network_configurations}=  Get Network Configuration
+
+    FOR  ${network_configuration}  IN  @{network_configurations}
+        ${ip_found}=  Set Variable If  '${network_configuration['Address']}' == '${ip_address}'  ${True}
+        ...  ${False}
+        Exit For Loop If  ${ip_found}
+    END
+    Run Keyword If  '${ip_found}' == '${False}'
+    ...  Fail  msg=Configured IP address not found on EthernetInterface URI.
+
+
+Enable IPv4 DHCP Settings
+    [Documentation]  Set IPv4 DHCP enabled status true/false in redfish URI.
+    [Arguments]  ${status}=${True}
+
+    # Description of argument(s):
+    # status   IPv4 DHCPEnabled status which needs to be set.
+    #          (e.g. True or False)
+
+    ${active_channel_config}=  Get Active Channel Config
+    ${ethernet_interface}=  Set Variable  ${active_channel_config['${CHANNEL_NUMBER}']['name']}
+    ${DHCPv4}=  Create Dictionary  DHCPEnabled=${status}
+
+    ${payload}=  Create Dictionary  DHCPv4=${DHCPv4}
+    Redfish.patch  ${REDFISH_NW_ETH_IFACE}${ethernet_interface}
+    ...  body=&{payload}  valid_status_codes=[${HTTP_NO_CONTENT}, ${HTTP_OK}]
+
+    Sleep  ${NETWORK_TIMEOUT}s
+    Wait For Host To Ping  ${OPENBMC_HOST}  ${NETWORK_TIMEOUT}
+
+
+Get IPv4 DHCP Enabled Status
+    [Documentation]  Return IPv4 DHCP enabled status from redfish URI.
+
+    ${active_channel_config}=  Get Active Channel Config
+    ${ethernet_interface}=  Set Variable  ${active_channel_config['${CHANNEL_NUMBER}']['name']}
+    ${resp}=  Redfish.Get Attribute  ${REDFISH_NW_ETH_IFACE}${ethernet_interface}  DHCPv4
+    ${status}=  Set Variable  ${resp['DHCPEnabled']}
+    Return From Keyword  ${status}
+
+
+Get DHCP IP Info
+    [Documentation]  Return DHCP IP address, gateway and subnetmask from redfish URI.
+
+    ${active_channel_config}=  Get Active Channel Config
+    ${ethernet_interface}=  Set Variable  ${active_channel_config['${CHANNEL_NUMBER}']['name']}
+    ${resp_list}=  Redfish.Get Attribute  ${REDFISH_NW_ETH_IFACE}${ethernet_interface}  IPv4Addresses
+    FOR  ${resp}  IN  @{resp_list}
+        Continue For Loop If  '${resp['AddressOrigin']}' != 'DHCP'
+        ${ip_addr}=  Set Variable  ${resp['Address']}
+        ${gateway}=  Set Variable  ${resp['Gateway']}
+        ${subnetmask}=  Set Variable  ${resp['SubnetMask']}
+        Return From Keyword  ${ip_addr}  ${gateway}  ${subnetmask}
+    END

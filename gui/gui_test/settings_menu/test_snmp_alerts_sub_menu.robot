@@ -3,8 +3,8 @@
 Documentation   Test OpenBMC GUI "SNMP Alerts" sub-menu of "Settings".
 
 Resource        ../../lib/gui_resource.robot
-Resource        ../../lib/snmp/resource.robot
-Resource        ../../lib/snmp/redfish_snmp_utils.robot
+Resource        ../../../lib/snmp/resource.robot
+Resource        ../../../lib/snmp/redfish_snmp_utils.robot
 
 Suite Setup     Suite Setup Execution
 Suite Teardown  Close Browser
@@ -13,7 +13,7 @@ Suite Teardown  Close Browser
 *** Variables ***
 
 ${xpath_snmp_alerts_sub_menu}                     //*[@data-test-id='nav-item-snmp-alerts']
-${xpath_snmp_alerts_heading}                      //h1[text()="SNMP Alerts"]
+${xpath_snmp_alerts_heading}                      //h1[text()="SNMP alerts"]
 ${xpath_select_all_snmp}                          //*[@data-test-id='snmpAlerts-checkbox-selectAll']
 ${xpath_add_destination}                          //button[contains(text(),'Add destination')]
 ${xpath_snmp_alert_destination_heading}           //h5[contains(text(),'Add SNMP alert destination')]
@@ -50,7 +50,7 @@ Verify Existence Of All Buttons In SNMP Alerts Page
 
 Verify Existence Of All Fields In Add Destination
     [Documentation]  Verify existence of all buttons and fields in add destination page.
-    [Tags]  Verify_Existence_Of_All_Button_And_Fields_In_Add_Destination
+    [Tags]  Verify_Existence_Of_All_Fields_In_Add_Destination
     [Teardown]  Run Keywords  Click Button  ${xpath_cancel_button}  AND
     ...  Wait Until Keyword Succeeds  10 sec  5 sec
     ...  Refresh GUI And Verify Element Value  ${xpath_snmp_alerts_heading}  SNMP Alerts
@@ -63,14 +63,14 @@ Verify Existence Of All Fields In Add Destination
     Page Should Contain Element  ${xpath_snmp_add_destination_button}
 
 
-Configure SNMP Settings On BMC With NON Default Port Via GUI And Verify
+Configure SNMP Settings On BMC With Non Default Port Via GUI And Verify
     [Documentation]  Configure SNMP settings on BMC with non default port via GUI and verify.
     [Tags]  Configure_SNMP_Settings_On_BMC_With_Non_Default_Port_Via_GUI_And_Verify
-    [Teardown]  Delete SNMP Manager Via GUI
+    [Teardown]  Delete SNMP Manager Via GUI  ${SNMP_MGR1_IP}  ${NON_DEFAULT_PORT1}
 
     Configure SNMP Manager Via GUI  ${SNMP_MGR1_IP}  ${NON_DEFAULT_PORT1}
 
-    Wait Until Page Contains  ${SNMP_MGR1_IP}  timeout=30s
+    Wait Until Page Contains  ${SNMP_MGR1_IP}  timeout=45s
 
     Verify SNMP Manager Configured On BMC  ${SNMP_MGR1_IP}  ${NON_DEFAULT_PORT1}
 
@@ -78,11 +78,11 @@ Configure SNMP Settings On BMC With NON Default Port Via GUI And Verify
 Configure SNMP Settings On BMC Via GUI And Verify
     [Documentation]  Configure SNMP settings on BMC via GUI and verify.
     [Tags]  Configure_SNMP_Settings_On_BMC_Via_GUI_And_Verify
-    [Teardown]  Delete SNMP Manager Via GUI
+    [Teardown]  Delete SNMP Manager Via GUI  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
 
     Configure SNMP Manager Via GUI  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
 
-    Wait Until Page Contains  ${SNMP_MGR1_IP}  timeout=30s
+    Wait Until Page Contains  ${SNMP_MGR1_IP}  timeout=45s
 
     Verify SNMP Manager Configured On BMC  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
 
@@ -90,11 +90,11 @@ Configure SNMP Settings On BMC Via GUI And Verify
 Configure SNMP Settings On BMC With Empty Port Via GUI And Verify
     [Documentation]  Configure SNMP settings on BMC with empty port via GUI and verify.
     [Tags]  Configure_SNMP_Settings_On_BMC_With_Empty_Port_Via_GUI_And_Verify
-    [Teardown]  Delete SNMP Manager Via GUI
+    [Teardown]  Delete SNMP Manager Via GUI  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
 
     Configure SNMP Manager Via GUI  ${SNMP_MGR1_IP}  ${empty_port}
 
-    Wait Until Page Contains  ${SNMP_MGR1_IP}  timeout=30s
+    Wait Until Page Contains  ${SNMP_MGR1_IP}  timeout=45s
 
     # SNMP Manager IP is set with default port number when no port number is provided.
     Verify SNMP Manager Configured On BMC  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
@@ -112,6 +112,60 @@ Configure Invalid SNMP Settings On BMC Via GUI And Verify
     ${SNMP_MGR1_IP}     ${negative_port}         Value must be between 0 – 65535
     ${out_of_range_ip}  ${NON_DEFAULT_PORT1}     Invalid format
     ${alpha_ip}         ${NON_DEFAULT_PORT1}     Invalid format
+
+
+Configure Multiple SNMP Managers On BMC Via GUI And Verify
+    [Documentation]  Configure multiple SNMP managers on BMC via GUI and verify.
+    [Tags]  Configure_Multiple_SNMP_Managers_On_BMC_Via_GUI_And_Verify
+    [Template]  Configure Multiple SNMP Managers On BMC With Valid Port Via GUI And Verify
+
+    # snmp_manager_ip      snmp_port
+    ${SNMP_MGR1_IP}     ${SNMP_DEFAULT_PORT}
+    ${SNMP_MGR2_IP}     ${SNMP_DEFAULT_PORT}
+
+
+Configure Multiple SNMP Managers With Non Default Port Via GUI And Verify
+    [Documentation]  Configure multiple SNMP managers with non-default port via GUI and verify.
+    [Tags]  Configure_Multiple_SNMP_Managers_With_Non_Default_Port_Via_GUI_And_Verify
+    [Template]  Configure Multiple SNMP Managers On BMC With Valid Port Via GUI And Verify
+
+    # snmp_manager_ip      snmp_port
+    ${SNMP_MGR1_IP}     ${NON_DEFAULT_PORT1}
+    ${SNMP_MGR2_IP}     ${NON_DEFAULT_PORT1}
+
+
+Configure Multiple SNMP Managers With Different Ports Via GUI And Verify
+    [Documentation]  Configure multiple SNMP managers with different ports via GUI and verify.
+    [Tags]  Configure_Multiple_SNMP_Managers_With_Different_Ports_Via_GUI_And_Verify
+    [Template]  Configure Multiple SNMP Managers On BMC With Valid Port Via GUI And Verify
+
+    # snmp_manager_ip      snmp_port
+    ${SNMP_MGR1_IP}     ${NON_DEFAULT_PORT1}
+    ${SNMP_MGR2_IP}     ${SNMP_DEFAULT_PORT}
+    ${SNMP_MGR3_IP}     ${NON_DEFAULT_PORT2}
+
+
+Configure Multiple SNMP Managers On BMC Via GUI And Verify Persistency On BMC Reboot
+    [Documentation]  Login GUI SNMP alerts page and
+    ...  add multiple SNMP Managers on BMC via GUI and verify persistency on BMC reboot.
+    [Tags]  Configure_Multiple_SNMP_Managers_On_BMC_Via_GUI_And_Verify_Persistency_On_BMC_Reboot
+    [Teardown]   Run Keywords  Delete SNMP Manager Via GUI  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
+    ...  AND  Delete SNMP Manager Via GUI  ${SNMP_MGR2_IP}  ${SNMP_DEFAULT_PORT}
+
+    Configure SNMP Manager Via GUI  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
+    Wait Until Page Contains  ${SNMP_MGR1_IP}  timeout=45s
+
+    Configure SNMP Manager Via GUI  ${SNMP_MGR2_IP}  ${SNMP_DEFAULT_PORT}
+    Wait Until Page Contains  ${SNMP_MGR2_IP}  timeout=45s
+
+    # Reboot BMC and check persistency SNMP manager.
+    Reboot BMC via GUI
+
+    Suite Setup Execution
+    Wait Until Page Contains  SNMP Alerts  timeout=1min
+
+    Verify SNMP Manager Configured On BMC  ${SNMP_MGR1_IP}  ${SNMP_DEFAULT_PORT}
+    Verify SNMP Manager Configured On BMC  ${SNMP_MGR2_IP}  ${SNMP_DEFAULT_PORT}
 
 
 *** Keywords ***
@@ -144,11 +198,18 @@ Configure SNMP Manager Via GUI
 
 Delete SNMP Manager Via GUI
     [Documentation]  Delete SNMP manager via GUI.
+    [Arguments]  ${snmp_mgr_ip}  ${snmp_mgr_port}
 
+    # Description of argument(s):
+    # snmp_mgr_ip       SNMP manager IP address.
+    # snmp_mgr_port     SNMP manager port.
+
+    Wait Until Page Contains  ${snmp_mgr_ip}  ${snmp_mgr_port}
     Click Element At Coordinates  ${xpath_select_all_snmp}  0  0
     Wait Until Keyword Succeeds  30 sec  5 sec  Click Element  ${xpath_delete_button}
     Wait Until Page Contains  Delete SNMP alert destination
     Click Element  ${xpath_delete_destination}
+    Wait Until Page Contains  Successfully deleted SNMP alert destination  timeout=45s
     Wait Until Keyword Succeeds  30 sec  10 sec  Refresh GUI And Verify Element Value
     ...  ${xpath_snmp_alerts_heading}  SNMP Alerts
 
@@ -171,3 +232,16 @@ Configure SNMP Manager On BMC With Invalid Setting Via GUI And Verify
     ...  Verify SNMP Manager Configured On BMC  ${snmp_manager_ip}  ${snmp_manager_port}
     Should Be Equal As Strings  ${status}  False
     ...  msg=BMC is allowing to configure with invalid SNMP settings.
+
+
+Configure Multiple SNMP Managers On BMC With Valid Port Via GUI And Verify
+    [Documentation]  Configure multiple SNMP managers on BMC with valid port value via GUI and verify.
+    [Arguments]  ${snmp_ip_value}  ${snmp_port_value}
+    [Teardown]  Delete SNMP Manager Via GUI  ${snmp_ip_value}  ${snmp_port_value}
+
+    # Description of argument(s):
+    # snmp_ip_value     SNMP manager IP address.
+    # snmp_port_value   SNMP manager port.
+
+    Configure SNMP Manager Via GUI  ${snmp_ip_value}  ${snmp_port_value}
+    Verify SNMP Manager Configured On BMC  ${snmp_ip_value}  ${snmp_port_value}

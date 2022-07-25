@@ -15,7 +15,9 @@ Suite Teardown    Suite Teardown Execution
 
 *** Variables ***
 
-${MAXIMUM_FILE_SIZE_MESSAGE}        File size exceeds maximum allowed size[500KB]
+${MAXIMUM_FILE_SIZE_MESSAGE}        File size exceeds maximum allowed size[25MB]
+${MAXIMUM_DIR_SIZE_MESSAGE}
+...   File size does not fit in the savearea directory maximum allowed size[25MB]
 ${FILE_UPLOAD_MESSAGE}              File Created
 ${FILE_DELETED_MESSAGE}             File Deleted
 ${FILE_UPDATED_MESSAGE}             File Updated
@@ -32,6 +34,8 @@ ${content-1}                        Sample Content to test partition file upload
 ${content-2}                        Sample Content to test partition file upload after reboot
 ...  Sample Content to test partition file upload after reboot
 ...  Sample Content to test partition file upload after reboot
+
+${LOOP_COUNT}                       10
 
 *** Test Cases ***
 
@@ -51,6 +55,9 @@ Redfish Upload Partition File To BMC
 
     # file_name
     500KB-file
+    2000KB-file
+    10000KB-file
+    25000KB-file
 
 
 Test Upload Lower Limit Partition File To BMC And Expect Failure
@@ -59,17 +66,18 @@ Test Upload Lower Limit Partition File To BMC And Expect Failure
     [Tags]  Test_Upload_Lower_Limit_Partition_File_To_BMC_And_Expect_Failure
     [Template]  Redfish Fail To Upload Partition File
 
-    # file_name       response_message
-    99-file           ${MINIMUM_FILE_SIZE_MESSAGE}
+    # file_name    status_code            partition_status    response_message
+    99-file        ${HTTP_BAD_REQUEST}    0                   ${MINIMUM_FILE_SIZE_MESSAGE}
 
 
-Redfish Fail To Upload Partition File To BMC
-    [Documentation]  Fail to upload partition file to BMC using Redfish.
-    [Tags]  Redfish_Fail_To_Upload_Partition_File_To_BMC
+Test Upload Upper Limit Partition File To BMC And Expect Failure
+    [Documentation]  Fail to upload partition file to BMC with file size
+    ...  more than upper limit of allowed partition file size using Redfish.
+    [Tags]  Test_Upload_Upper_Limit_Partition_File_To_BMC_And_Expect_Failure
     [Template]  Redfish Fail To Upload Partition File
 
-    # file_name       response_message
-    501KB-file        ${MAXIMUM_FILE_SIZE_MESSAGE}
+    # file_name     status_code            partition_status    response_message
+    25001KB-file    ${HTTP_BAD_REQUEST}    0                   ${MAXIMUM_FILE_SIZE_MESSAGE}
 
 
 Redfish Upload Multiple Partition File To BMC
@@ -81,13 +89,17 @@ Redfish Upload Multiple Partition File To BMC
     250KB-file,500KB-file
 
 
-Redfish Fail To Upload Multiple Partition File To BMC
-    [Documentation]  Fail to upload multiple partition file to BMC using Redfish.
-    [Tags]  Redfish_Fail_To_Upload_Multiple_Partition_File_To_BMC
+Test Upload Partition File When BMC Space Reach Max And Expect Failure
+    [Documentation]  Fail to upload multiple partition file to BMC
+    ...  as BMC directory reach to upper limit using Redfish.
+    [Tags]  Test_Upload_Partition_File_When_BMC_Space_Reach_Max_And_Expect_Failure
     [Template]  Redfish Fail To Upload Partition File
 
-    # file_name                 response_message
-    650KB-file,501KB-file       ${MAXIMUM_FILE_SIZE_MESSAGE}
+    # file_name     status_code            partition_status    response_message
+    15000KB-file    ${HTTP_OK}             1                   ${FILE_UPLOAD_MESSAGE}
+    16000KB-file    ${HTTP_BAD_REQUEST}    0                   ${MAXIMUM_DIR_SIZE_MESSAGE}
+    25000KB-file    ${HTTP_OK}             1                   ${FILE_UPLOAD_MESSAGE}
+    100-file        ${HTTP_BAD_REQUEST}    0                   ${MAXIMUM_DIR_SIZE_MESSAGE}
 
 
 Redfish Upload Same Partition File To BMC In Loop
@@ -135,9 +147,9 @@ Redfish Multiple Partition File Persistency On BMC Reboot
     250KB-file,500KB-file
 
 
-Redfish Read Partition File On BMC
+Redfish Read Partition File From BMC
     [Documentation]  Upload partition file to BMC using Redfish and verify the content.
-    [Tags]  Redfish_Read_Partition_File_On_BMC
+    [Tags]  Redfish_Read_Partition_File_From_BMC
     [Template]  Redfish Read Partition File
 
     # file_name                      reboot_flag
@@ -145,9 +157,9 @@ Redfish Read Partition File On BMC
     testfile01-file,testfile02-file  False
 
 
-Redfish Read Partition File On BMC Reboot
+Redfish Read Partition File Post BMC Reboot
     [Documentation]  Upload partition file to BMC using Redfish and verify the content after reboot.
-    [Tags]  Check_Redfish_Read_Partition_File_On_BMC_Reboot
+    [Tags]  Redfish_Read_Partition_File_Post_BMC_Reboot
     [Template]  Redfish Read Partition File
 
     # file_name                      reboot_flag
@@ -182,9 +194,9 @@ Redfish Persistency Update Partition File On BMC
     testfile01-file             False
 
 
-Redfish Persistency Update Partition File On BMC Reboot
+Redfish Persistency Update Partition File Post BMC Reboot
     [Documentation]  Upload partition file to BMC using Redfish and verify the content after the reboot.
-    [Tags]  Redfish_Persistency_Update_Partition_File_On_BMC_Reboot
+    [Tags]  Redfish_Persistency_Update_Partition_File_Post_BMC_Reboot
     [Template]  Redfish Update Partition File With Same Content
 
     # file_name                 reboot_flag
@@ -258,6 +270,21 @@ Test Redfish Fail To Upload Partition File Name With Special Character To BMC
     1KB-!filename    ${HTTP_BAD_REQUEST}    ${UNSUPPORTED_FILE_NAME_MESSAGE}
     1KB-@filename    ${HTTP_BAD_REQUEST}    ${UNSUPPORTED_FILE_NAME_MESSAGE}
 
+
+Redfish Upload Validated Partition File From Path To BMC
+   [Documentation]  Upload valid partition file to BMC from file path define by user in loop.
+   ...  By default loop count values is 10 times.
+   [Tags]  Redfish_Upload_Validated_Partition_File_From_Path_To_BMC
+
+   Log To Console  ${EMPTY}
+   FOR  ${count}  IN RANGE  1  ${LOOP_COUNT} + 1
+     Log To Console  **************************************
+     Log To Console  * The Current Loop Count is ${count} of ${LOOP_COUNT} *
+     Log To Console  **************************************
+
+     Redfish Upload Partition File From Path  ${PARTITION_FILE_PATH}
+   END
+
 *** Keywords ***
 
 Suite Setup Execution
@@ -287,6 +314,23 @@ Delete Local Partition File
     # file_name    Partition file name.
 
     FOR  ${conf_file}  IN  @{file_name}
+      ${file_exist}=  Run Keyword And Return Status  OperatingSystem.File Should Exist  ${conf_file}
+      Run Keyword If  'True' == '${file_exist}'  Remove File  ${conf_file}
+    END
+
+
+Delete Local Server Partition File
+    [Documentation]  Local partition files which is getting uploaded to BMC,
+    ...  will get deleted after the uploads. If partition file name consist
+    ...  of “-file” then partition file gets deleted.
+
+    @{conf_file_list} =  OperatingSystem.List Files In Directory  ${EXECDIR}
+    ${match_conf_file_list}=  Get Matches  ${conf_file_list}  regexp=.*-file  case_insensitive=${True}
+
+    ${num_records}=  Get Length  ${match_conf_file_list}
+    Return From Keyword If  ${num_records} == ${0}  ${EMPTY}
+
+    FOR  ${conf_file}  IN  @{match_conf_file_list}
       ${file_exist}=  Run Keyword And Return Status  OperatingSystem.File Should Exist  ${conf_file}
       Run Keyword If  'True' == '${file_exist}'  Remove File  ${conf_file}
     END
@@ -367,18 +411,19 @@ Return Description Of Response
 
 Upload Partition File To BMC
     [Documentation]  Upload partition file to BMC.
-    [Arguments]  ${file_name}  ${status_code}  ${expected_message}  ${flag}=${True}
+    [Arguments]  ${file_name}  ${status_code}  ${expected_message}  ${flag}=${True}  ${path}=${EMPTY}
 
     # Description of argument(s):
     # file_name           Partition file name.
     # status_code         HTTPS status code.
     # expected_message    Expected message of URI.
     # flag                If True run part of program, else skip.
+    # path                Partition file path.
 
     Run Keyword If  '${flag}' == '${True}'  Initialize OpenBMC
     FOR  ${conf_file}  IN  @{file_name}
       # Get the content of the file and upload to BMC.
-      ${image_data}=  OperatingSystem.Get Binary File  ${conf_file}
+      ${image_data}=  OperatingSystem.Get Binary File  ${path}${conf_file}
       ${headers}=  Create Dictionary  X-Auth-Token=${XAUTH_TOKEN}  Content-Type=application/octet-stream
 
       ${kwargs}=  Create Dictionary  data=${image_data}
@@ -432,21 +477,29 @@ Redfish Upload Partition File
 
 Redfish Fail To Upload Partition File
     [Documentation]  Fail to upload the partition file.
-    [Arguments]  ${file_name}  ${response_message}=${EMPTY}
+    [Arguments]  ${file_name}  ${status_code}  ${partition_status}  ${response_message}=${EMPTY}
 
     # Description of argument(s):
     # file_name           Partition file name.
+    # status_code         HTTPS status code.
+    # partition_status    Partition status.
     # response_message    By default is set to EMPTY,
-    #                     else user provide the information when user upload the partition with file size 
+    #                     else user provide the information when user upload the partition with file size
     #                     below lower linit of allowed partition or more than of large allowed partition.
 
     @{Partition_file_list} =  Split String  ${file_name}  ,
 
     Create Partition File  ${Partition_file_list}
-    Upload Partition File To BMC  ${Partition_file_list}  ${HTTP_BAD_REQUEST}  ${response_message}
+    Upload Partition File To BMC  ${Partition_file_list}  ${status_code}  ${response_message}
+    Verify Partition File On BMC  ${Partition_file_list}  Partition_status=${partition_status}
 
-    Verify Partition File On BMC  ${Partition_file_list}  Partition_status=0
-    Delete BMC Partition File  ${Partition_file_list}  ${HTTP_NOT_FOUND}  ${RESOURCE_NOT_FOUND_MESSAGE}
+    Run Keyword If  ${partition_status} == 0
+    ...  Run Keywords
+    ...  Delete BMC Partition File
+    ...  ${Partition_file_list}  ${HTTP_NOT_FOUND}  ${RESOURCE_NOT_FOUND_MESSAGE}  AND
+    ...  Delete All BMC Partition File  ${HTTP_OK}  AND
+    ...  Delete Local Server Partition File
+
     Delete Local Partition File  ${Partition_file_list}
 
 
@@ -811,3 +864,26 @@ Check Redfish Fail To Upload Partition File Name With Special Character To BMC
     Should Be Equal As Strings  ${status}  False
 
     Delete Local Partition File  ${Partition_file_list}
+
+
+Redfish Upload Partition File From Path
+    [Documentation]  Upload the partition file to BMC from file path.
+    [Arguments]  ${PARTITION_FILE_PATH}
+
+    # Description of argument(s):
+    # PARTITION_FILE_PATH    Partition file path.
+
+    ${file_list} =  OperatingSystem.List Files In Directory  ${PARTITION_FILE_PATH}
+
+    ${num_records}=  Get Length  ${file_list}
+    Should Not Be Equal As Integers  ${num_records}  0
+
+    FOR  ${file_name}  IN  @{file_list}
+      @{Partition_file_list} =  Split String  ${file_name}  ,
+      ${num_records}=  Get Length  ${Partition_file_list}
+      Upload Partition File To BMC  file_name=${Partition_file_list}
+      ...  status_code=${HTTP_OK}  expected_message=${FILE_UPLOAD_MESSAGE}  path=${PARTITION_FILE_PATH}
+      Verify Partition File On BMC  ${Partition_file_list}  Partition_status=1
+      Delete BMC Partition File  ${Partition_file_list}  ${HTTP_OK}  ${FILE_DELETED_MESSAGE}
+    END
+

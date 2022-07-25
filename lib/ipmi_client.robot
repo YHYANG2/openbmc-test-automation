@@ -10,6 +10,7 @@ Resource        ../lib/state_manager.robot
 Library         String
 Library         var_funcs.py
 Library         ipmi_client.py
+Library         ../lib/bmc_ssh_utils.py
 
 *** Variables ***
 ${dbusHostIpmicmd1}=   dbus-send --system  ${OPENBMC_BASE_URI}HostIpmi/1
@@ -21,6 +22,7 @@ ${IPMI_USER_OPTIONS}   ${EMPTY}
 ${IPMI_INBAND_CMD}=    ipmitool -C ${IPMI_CIPHER_LEVEL} -N ${IPMI_TIMEOUT} -p ${IPMI_PORT}
 ${HOST}=               -H
 ${RAW}=                raw
+${IPMITOOL_PATH}  /tmp/ipmitool
 
 *** Keywords ***
 
@@ -86,7 +88,7 @@ Run Dbus IPMI Standard Command
     [Arguments]    ${command}
     Copy ipmitool
     ${stdout}    ${stderr}    ${output}=  Execute Command
-    ...    /tmp/ipmitool -I dbus ${command}    return_stdout=True
+    ...    ${IPMITOOL_PATH} -I dbus ${command}    return_stdout=True
     ...    return_stderr= True    return_rc=True
     Should Be Equal    ${output}    ${0}    msg=${stderr}
     [Return]    ${stdout}
@@ -94,7 +96,7 @@ Run Dbus IPMI Standard Command
 
 Run Inband IPMI Raw Command
     [Documentation]  Run the raw IPMI command in-band.
-    [Arguments]  ${command}  ${os_host}=${OS_HOST}  ${os_username}=${OS_USERNAME}
+    [Arguments]  ${command}  ${fail_on_err}=${1}  ${os_host}=${OS_HOST}  ${os_username}=${OS_USERNAME}
     ...          ${os_password}=${OS_PASSWORD}
 
     # Description of argument(s):
@@ -110,6 +112,7 @@ Run Inband IPMI Raw Command
     ${ipmi_cmd}=  Catenate  ${IPMI_INBAND_CMD}  ${RAW}  ${command}
     Qprint Issuing  ${ipmi_cmd}
     ${stdout}  ${stderr}=  Execute Command  ${ipmi_cmd}  return_stderr=True
+    Return From Keyword If  ${fail_on_err} == ${0}  ${stderr}
     Should Be Empty  ${stderr}  msg=${stdout}
     [Return]  ${stdout}
 
@@ -187,13 +190,13 @@ Check If IPMI Tool Exist
 
 Activate SOL Via IPMI
     [Documentation]  Start SOL using IPMI and route output to a file.
-    [Arguments]  ${file_path}=/tmp/sol_${OPENBMC_HOST}
+    [Arguments]  ${file_path}=${IPMI_SOL_LOG_FILE}
 
     # Description of argument(s):
     # file_path                     The file path on the local machine (vs.
     #                               OBMC) to collect SOL output. By default
     #                               SOL output is collected at
-    #                               /tmp/sol_<BMC_IP> else user input location.
+    #                               logs/sol_<BMC_IP> else user input location.
 
     ${ipmi_cmd}=  Create IPMI Ext Command String  sol activate usesolkeepalive
     Qprint Issuing  ${ipmi_cmd}
@@ -203,13 +206,13 @@ Activate SOL Via IPMI
 
 Deactivate SOL Via IPMI
     [Documentation]  Stop SOL using IPMI and return SOL output.
-    [Arguments]  ${file_path}=/tmp/sol_${OPENBMC_HOST}
+    [Arguments]  ${file_path}=${IPMI_SOL_LOG_FILE}
 
     # Description of argument(s):
     # file_path                     The file path on the local machine to copy
     #                               SOL output collected by above "Activate
     #                               SOL Via IPMI" keyword.  By default it
-    #                               copies log from /tmp/sol_<BMC_IP>.
+    #                               copies log from logs/sol_<BMC_IP>.
 
     ${ipmi_cmd}=  Create IPMI Ext Command String  sol deactivate
     Qprint Issuing  ${ipmi_cmd}
@@ -300,14 +303,22 @@ Copy ipmitool
     ...  It is not part of the automation code by default. You must manually copy or link the correct openbmc
     ...  version of the tool in to the tools directory in order to run this test suite.
 
-    OperatingSystem.File Should Exist  tools/ipmitool  msg=${ipmitool_error}
+    ${response}  ${stderr}  ${rc}=  BMC Execute Command
+    ...  which ipmitool  ignore_err=${1}
+    ${installed}=  Get Regexp Matches  ${response}  ipmitool
+    Run Keyword If  ${installed} == ['ipmitool']
+    ...  Run Keywords  Set Suite Variable  ${IPMITOOL_PATH}  ${response}
+    ...  AND  SSHLibrary.Open Connection     ${OPENBMC_HOST}
+    ...  AND  SSHLibrary.Login   ${OPENBMC_USERNAME}    ${OPENBMC_PASSWORD}
+    ...  AND  Return From Keyword
 
+    OperatingSystem.File Should Exist  tools/ipmitool  msg=${ipmitool_error}
     Import Library      SCPLibrary      WITH NAME       scp
     scp.Open connection     ${OPENBMC_HOST}     username=${OPENBMC_USERNAME}      password=${OPENBMC_PASSWORD}
     scp.Put File    tools/ipmitool   /tmp
     SSHLibrary.Open Connection     ${OPENBMC_HOST}
     SSHLibrary.Login   ${OPENBMC_USERNAME}    ${OPENBMC_PASSWORD}
-    Execute Command     chmod +x /tmp/ipmitool
+    Execute Command     chmod +x ${IPMITOOL_PATH}
 
 
 Initiate Host Boot Via External IPMI
@@ -403,6 +414,37 @@ IPMI Create User
     Should Be Equal  ${user_info['user_name']}  ${username}
 
 
+Enable IPMI User And Verify
+    [Documentation]  Enable the userid and verify that it has been enabled.
+    [Arguments]  ${userid}
+
+    # Description of argument(s):
+    # userid   A numeric userid (e.g. "4").
+
+    Run IPMI Standard Command  user enable ${userid}
+    ${user_info}=  Get User Info  ${userid}
+    Valid Value  user_info['enable_status']  ['enabled']
+
+
+Create Random IPMI User
+    [Documentation]  Create IPMI user with random username and userid and return those fields.
+
+    ${random_username}=  Generate Random String  8  [LETTERS]
+    ${random_userid}=  Evaluate  random.randint(2, 15)  modules=random
+    IPMI Create User  ${random_userid}  ${random_username}
+    [Return]  ${random_userid}  ${random_username}
+
+
+Delete Created User
+    [Documentation]  Delete created IPMI user.
+    [Arguments]  ${userid}
+    # Description of argument(s):
+    # userid  The user ID (e.g. "1", "2", etc.).
+
+    Run IPMI Standard Command  user set name ${userid} ""
+    Sleep  5s
+
+
 Set Channel Access
     [Documentation]  Verify that user is able to run IPMI command
     ...  with given username and password.
@@ -434,3 +476,171 @@ Delete All Non Root IPMI User
         Run IPMI Standard Command   user set name ${user_record['user_id']} ""
         Sleep  5s
     END
+
+
+Create SEL
+    [Documentation]  Create a SEL.
+    [Arguments]  ${sensor_type}  ${sensor_number}
+
+    # Create a SEL.
+    # Example:
+    # a | 02/14/2020 | 01:16:58 | Sensor_type #0x17 |  | Asserted
+    # Description of argument(s):
+    #    ${sensor_type}            Type of the sensor used in hexadecimal (can be fan, temp etc.,),
+    #                              obtained from Sensor Type field in - ipmitool sdr get "sensor_name".
+    #                              Example: Sensor Type (Threshold) : Fan (0x04), here 0xHH is sensor type.
+
+    #    ${sensor_number}          Sensor number of the sensor in hexadecimal.
+    #                              obtained from Sensor ID field in - ipmitool sdr get "sensor_name".
+    #                              Example: Sensor ID : SENSOR_1 (0xHH), here 0xHH is sensor number.
+
+    ${resp}=  Run IPMI Command
+    ...  ${IPMI_RAW_CMD['SEL_entry']['Create_SEL'][0]} 0x${sensor_type} 0x${sensor_number} ${IPMI_RAW_CMD['SEL_entry']['Create_SEL'][1]}
+
+    Should Not Contain  ${resp}  00 00  msg=SEL not created.
+
+    [Return]  ${resp}
+
+
+Fetch Any Sensor From Sensor List
+    [Documentation]  Fetch any sensor name randomly from Sensor list.
+
+    @{tmp_list}=  Create List
+
+    ${resp}=  Run IPMI Standard Command  sensor
+    @{sensor_list_lines}=  Split To Lines  ${resp}
+
+    # Omit the discrete sensor and create an threshold sensor name list
+    FOR  ${sensor}  IN  @{sensor_list_lines}
+      ${discrete_sensor_status}=  Run Keyword And Return Status  Should Contain  ${sensor}  discrete
+      Continue For Loop If  '${discrete_sensor_status}' == 'True'
+      ${sensor_details}=  Split String  ${sensor}  |
+      ${get_sensor_name}=  Get From List  ${sensor_details}  0
+      ${sensor_name}=  Set Variable  ${get_sensor_name.strip()}
+      Append To List  ${tmp_list}  ${sensor_name}
+    END
+
+    ${random_sensor_name}=  Evaluate  random.choice(${tmp_list})  random
+
+    [Return]  ${random_sensor_name}
+
+Fetch Sensor Details From SDR
+    [Documentation]  Identify the sensors from sdr get and fetch sensor details required.
+    [Arguments]  ${sensor_name}  ${setting}
+
+    # Description of argument(s):
+    #    ${sensor_number}        Sensor number of the sensor in hexadecimal.
+    #                            obtained sensor name from - 'ipmitool sensor' command.
+    #                            Example: a | 02/14/2020 | 01:16:58 | Sensor_type #0x17 |  | Asserted
+    #                            here, a is the sensor name.
+
+    #    ${setting}              Field to fetch data. Example : Sensor ID, Sensor Type (Threshold), etc,.
+
+    ${resp}=  Run IPMI Standard Command  sdr get "${sensor_name}"
+
+    ${setting_line}=  Get Lines Containing String  ${resp}  ${setting}
+    ...  case-insensitive
+    ${setting_status}=  Fetch From Right  ${setting_line}  :${SPACE}
+
+    [Return]  ${setting_status}
+
+
+Get Data And Byte From SDR Sensor
+    [Documentation]  Fetch the Field Data and hexadecimal values from given details.
+    [Arguments]  ${sensor_detail}
+
+    # Description of argument(s):
+    #    ${sensor_detail}      Requested field and the value from the sdr get ipmi command.
+    #                          Example : if Sensor ID is the requesting setting, then,
+    #                          ${sensor_detail} will be "Sensor ID : SENSOR_1 (0xHH)"
+
+    ${sensor_detail}=  Split String  ${sensor_detail}  (0x
+    ${field_data}=  Set Variable  ${sensor_detail[0]}
+    ${field_data}=  Remove Whitespace  ${field_data}
+    ${sensor_hex}=  Replace String  ${sensor_detail[1]}  )  ${EMPTY}
+    ${sensor_hex}=  Zfill Data  ${sensor_hex}  2
+
+    [Return]  ${field_data}  ${sensor_hex}
+
+
+Get Current Date from BMC
+    [Documentation]  Runs the date command from BMC and returns current date and time
+
+    # Get Current Date from BMC
+    ${date}  ${stderr}  ${rc}=  BMC Execute Command   date
+
+    # Split the string and remove first and 2nd last value from the list and join to form %d %b %H:%M:%S %Y date format
+    ${date}=  Split String  ${date}
+    Remove From List  ${date}  0
+    Remove From List  ${date}  -2
+    ${date}=  Evaluate  " ".join(${date})
+
+    # Convert the date format to %m/%d/%Y %H:%M:%S
+    ${date}=  Convert Date  ${date}  date_format=%b %d %H:%M:%S %Y  result_format=%m/%d/%Y %H:%M:%S  exclude_millis=True
+
+    [Return]   ${date}
+
+
+Get SEL Info Via IPMI
+    [Documentation]  Get the SEL Info via IPMI raw command
+
+    # Get SEL Info response consist of 14 bytes of hexadecimal data.
+
+    # Byte 1 - SEL Version,
+    # Byte 2 & 3 - Entry bytes - LSB MSB,
+    # Byte 4 & 5 - Free Space in bytes, LS Byte first.
+    # Byte 6 - 9 - Most recent addition timestamp,
+    # Byte 10-13 - Most recent erase timestamp,
+    # Byte 14 - Operation Support
+
+    # Example: ${resp} will be "51 XX XX XX XX ff ff ff ff ff ff ff ff XX"
+
+    ${resp}=  Run IPMI Standard Command
+    ...  raw ${IPMI_RAW_CMD['SEL_entry']['SEL_info'][0]}
+    ${resp}=  Split String  ${resp}
+
+    [Return]  ${resp}
+
+
+Verify Invalid IPMI Command
+    [Documentation]  Execute invalid IPMI command and verify with given response code.
+    [Arguments]  ${ipmi_cmd}  ${error_code}=0xc9
+
+    #  Description Of Arguments.
+    #  ${ipmi_cmd}   - IPMI raw cmd with invalid data length.
+    #  ${error_code} - Expected error code e.g 0xc7, 0xcc.
+
+    ${resp}=  Run External IPMI Raw Command  ${ipmi_cmd}  fail_on_err=0
+
+    Should Contain  ${resp}  rsp=${error_code}
+
+
+Identify Request Data
+    [Documentation]  Convert text from variable declared to request data.
+    [Arguments]  ${string}
+
+    # Convert string to hexadecimal data for each character.
+    # Return the hex data with prefix of 0x as string and list of hex data.
+    # Description of argument(s):
+    #    string             Any string to be converted to hex.
+
+    # Given a string, convert to hexadecimal and prefix with 0x
+    ${hex1}=  Create List
+    ${hex2}=  Create List
+    ${resp_data}=  Split String With Index  ${string}  1
+    FOR  ${data}  IN  @{resp_data}
+        # prefixes 0x by default
+        ${hex_value}=  Evaluate  hex(ord("${data}"))
+        # prefixes string with bytes prefixed 0x by default
+        Append To List  ${hex1}  ${hex_value}
+        # provides only hexadecimal bytes
+        ${hex}=  Evaluate  hex(ord("${data}"))[2:]
+        # provides string with only hexadecimal bytes
+        Append To List  ${hex2}  ${hex}
+    END
+    ${hex1}=  Evaluate  " ".join(${hex1})
+
+    # ${hex1} will contains the data to write for fru in list.
+    # ${hex2} will contains the data to verify fru after write operation completed.
+
+    [Return]  ${hex1}  ${hex2}

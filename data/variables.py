@@ -45,6 +45,9 @@ HOST_STATE_URI = OPENBMC_BASE_URI + 'state/host0/'
 CHASSIS_STATE_URI = OPENBMC_BASE_URI + 'state/chassis0/'
 HOST_WATCHDOG_URI = OPENBMC_BASE_URI + 'watchdog/host0/'
 
+# OS state for x86 architecture
+OS_STATE_URI = OPENBMC_BASE_URI + 'state/os/'
+
 # Logging URI variables
 BMC_LOGGING_URI = OPENBMC_BASE_URI + 'logging/'
 BMC_LOGGING_ENTRY = BMC_LOGGING_URI + 'entry/'
@@ -107,8 +110,7 @@ REST_DUMP_URI = OPENBMC_BASE_URI + 'dump/bmc/'
 DUMP_ENTRY_URI = REST_DUMP_URI + 'entry/'
 DUMP_DOWNLOAD_URI = "/download/dump/"
 # The path on the BMC where dumps are stored.
-DUMP_DIR_PATH = "/var/lib/phosphor-debug-collector/dumps/"
-DUMP_HB_DIR_PATH = "/var/lib/phosphor-debug-collector/hostbootdump/"
+DUMP_DIR_PATH = "/var/lib/phosphor-debug-collector/"
 
 # Boot progress variables.
 STATE_DBUS_BASE = 'xyz.openbmc_project.State.'

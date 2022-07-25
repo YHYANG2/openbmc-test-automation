@@ -17,11 +17,11 @@ Test Setup      Test Setup Execution
 *** Variables ***
 
 ${xpath_overview_page_header}          //h1[contains(text(), "Overview")]
-${xpath_edit_network_settings_button}  //*[@data-test-id='overviewQuickLinks-button-networkSettings']
-${view_all_event_logs}                 //*[@data-test-id='overviewEvents-button-eventLogs']
+${xpath_edit_network_settings_button}  (//*[text()="View more"])[3]
+${view_all_event_logs}                 (//*[text()="View more"])[5]
 ${xpath_launch_serial_over_lan}        //*[@data-test-id='overviewQuickLinks-button-solConsole']
-${xpath_led_button}                    //*[@data-test-id='overviewQuickLinks-checkbox-serverLed']
-
+${xpath_led_button}                    //*[@data-test-id='overviewInventory-checkbox-identifyLed']
+${view_all_Dumps}                      (//*[text()="View more"])[7]
 
 *** Test Cases ***
 
@@ -29,12 +29,14 @@ Verify Existence Of All Sections In Overview Page
     [Documentation]  Verify existence of all sections in Overview page.
     [Tags]  Verify_Existence_Of_All_Sections_In_Overview_Page
 
-    Page Should Contain  BMC information
+    Page Should Contain  BMC date and time
+    Page Should Contain  Firmware information
     Page Should Contain  Server information
-    Page Should Contain  Network information
-    Page Should Contain  Power consumption
-    Page Should Contain  High priority events
-
+    Wait Until Page Contains  Network information  timeout=10
+    Page Should Contain  Power information
+    Page Should Contain  Event logs
+    Page Should Contain  Inventory and LEDs
+    Page Should Contain  Dumps
 
 Verify Network Information In Overview Page
     [Documentation]  Verify values under network information section.
@@ -53,15 +55,6 @@ Verify Network Information In Overview Page
 
     ${macaddr}=  Get BMC MAC Address
     Page Should Contain  ${macaddr}
-
-
-Verify Message In High Priority Events Section For No Events
-    [Documentation]  Verify message under high priority events section in case of no events.
-    [Tags]  Verify_Message_In_High_Priority_Events_Section_For_No_Events
-
-    Redfish Purge Event Log
-    Click Element  ${xpath_refresh_button}
-    Wait Until Page Contains  no high priority events to display  timeout=10
 
 
 Verify Server Information Section
@@ -130,15 +123,15 @@ Verify Server LED Turn On
     [Tags]  Verify_Server_LED_Turn_On
 
     # Turn Off the server LED via Redfish and refresh GUI.
-    Redfish.Patch  /redfish/v1/Systems/system  body={"IndicatorLED":"Off"}   valid_status_codes=[200, 204]
+    Set IndicatorLED State  Off
+
     Refresh GUI
 
     # Turn ON the LED via GUI.
     Click Element At Coordinates  ${xpath_led_button}  0  0
 
     # Cross check that server LED ON state via Redfish.
-    ${led_status}=  Redfish.Get Attribute  /redfish/v1/Systems/system  IndicatorLED
-    Should Be True  '${led_status}' == 'Lit'
+    Verify Identify LED State Via Redfish  Lit
 
 
 Verify Server LED Turn Off
@@ -146,15 +139,14 @@ Verify Server LED Turn Off
     [Tags]  Verify_Server_LED_Turn_Off
 
     # Turn On the server LED via Redfish and refresh GUI.
-    Redfish.Patch  /redfish/v1/Systems/system  body={"IndicatorLED":"Lit"}   valid_status_codes=[200, 204]
+    Set IndicatorLED State  Lit
     Refresh GUI
 
     # Turn OFF the LED via GUI.
     Click Element At Coordinates  ${xpath_led_button}  0  0
 
     # Cross check that server LED off state via Redfish.
-    ${led_status}=  Redfish.Get Attribute  /redfish/v1/Systems/system  IndicatorLED
-    Should Be True  '${led_status}' == 'Off'
+    Verify Identify LED State Via Redfish  Off
 
 
 Verify BMC Time In Overview Page
@@ -176,6 +168,14 @@ Verify BMC Information At Host Power Off State
     Page Should Contain  ${firmware_version}
 
 
+Verify View More Button For Dumps
+    [Documentation]  Verify view more button for dumps button in overview page.
+    [Tags]  Verify_View_More_Button_For_Dumps
+
+    Wait Until Page Contains Element  ${view_all_Dumps}  timeout=30
+    Click Element  ${view_all_Dumps}
+    Wait Until Page Contains Element  ${xpath_dumps_header}   timeout=30
+
 *** Keywords ***
 
 Test Setup Execution
@@ -183,3 +183,31 @@ Test Setup Execution
 
     Click Element  ${xpath_overview_menu}
     Wait Until Page Contains Element  ${xpath_overview_page_header}
+
+
+Verify Identify LED State Via Redfish
+    [Documentation]  Verify that Redfish identify LED system with given state.
+    [Arguments]  ${expected_state}
+    # Description of argument(s):
+    # expected_state    Expected value of Identify LED.
+
+    # Python module:  get_member_list(resource_path)
+    ${systems}=  Redfish_Utils.Get Member List  /redfish/v1/Systems
+    FOR  ${system}  IN  @{systems}
+        ${led_value}=  Redfish.Get Attribute  ${system}  IndicatorLED
+        Should Be True  '${led_value}' == '${expected_state}'
+    END
+
+
+Set IndicatorLED State
+    [Documentation]  Perform redfish PATCH operation.
+    [Arguments]  ${led_state}  ${expect_resp_code}=[200, 204]
+    # Description of argument(s):
+    # led_state            IndicatorLED state to "off", "Lit" etc.
+    # expect_resp_code     Expected HTTPS response code. Default [200, 204]
+
+    # Python module:  get_member_list(resource_path)
+    ${systems}=  Redfish_Utils.Get Member List  /redfish/v1/Systems
+    FOR  ${system}  IN  @{systems}
+        Redfish.Patch  ${system}  body={"IndicatorLED":${led_state}}   valid_status_codes=${expect_resp_code}
+    END
