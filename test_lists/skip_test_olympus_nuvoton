@@ -7,6 +7,12 @@
 #  not support warm reset command
 -e Test_IPMI_Warm_Reset
 
+# ipmi/test_get_bios_post_code.robot
+# not support OEM command: netfn=0x30 cmd=0xe9
+-e Test_Get_BIOS_POST_Code_via_IPMI_Raw_Command
+-e Test_Get_BIOS_POST_Code_via_IPMI_Raw_Command_After_Power_Cycle
+-e Test_Get_BIOS_POST_Code_via_IPMI_Raw_Command_With_Host_Powered_Off
+
 # Skip all of redfish/eventlog/test_esel.robot
 # this is only used for ibmc oem ipmi commamd
 -e Verify_eSEL_Using_Redfish
