@@ -25,16 +25,14 @@ Verify AccountService Available
     ${resp} =  Redfish_utils.Get Attribute  /redfish/v1/AccountService  ServiceEnabled
     Should Be Equal As Strings  ${resp}  ${True}
 
-Verify Redfish User Persistence After Reboot
-    [Documentation]  Verify Redfish user persistence after reboot.
-    [Tags]  Verify_Redfish_User_Persistence_After_Reboot
-    # Create Redfish users.
-    Redfish Create User  admin_user     TestPwd123  Administrator   ${True}
-    Redfish Create User  operator_user  TestPwd123  Operator        ${True}
-    Redfish Create User  readonly_user  TestPwd123  ReadOnly        ${True}
-    #Redfish Create User  callback_user  TestPwd123  Callback        ${True}
 
-    Redfish.Login
+Verify Redfish Admin User Persistence After Reboot
+    [Documentation]  Verify Redfish admin user persistence after reboot.
+    [Tags]  Verify_Redfish_Admin_User_Persistence_After_Reboot
+    [Setup]  Run Keywords  Redfish.Login  AND
+    ...  Redfish Create User  admin_user  TestPwd123  Administrator  ${True}
+    [Teardown]  Run Keywords  Redfish.Delete  /redfish/v1/AccountService/Accounts/admin_user
+    ...  AND  Test Teardown Execution
 
     # Reboot BMC.
     Redfish OBMC Reboot (off)  stack_mode=normal
@@ -43,15 +41,37 @@ Verify Redfish User Persistence After Reboot
 
     # Verify users after reboot.
     Redfish Verify User  admin_user     TestPwd123  Administrator   ${True}
+
+
+Verify Redfish Operator User Persistence After Reboot
+    [Documentation]  Verify Redfish operator user persistence after reboot.
+    [Tags]  Verify_Redfish_Operator_User_Persistence_After_Reboot
+    [Setup]  Run Keywords  Redfish.Login  AND
+    ...  Redfish Create User  operator_user  TestPwd123  Operator  ${True}
+    [Teardown]  Run Keywords  Redfish.Delete  /redfish/v1/AccountService/Accounts/operator_user
+    ...  AND  Test Teardown Execution
+
+    # Reboot BMC.
+    Redfish OBMC Reboot (off)  stack_mode=normal
+
+    # Verify users after reboot.
     Redfish Verify User  operator_user  TestPwd123  Operator        ${True}
+
+
+Verify Redfish Readonly User Persistence After Reboot
+    [Documentation]  Verify Redfish readonly user persistence after reboot.
+    [Tags]  Verify_Redfish_Readonly_User_Persistence_After_Reboot
+    [Setup]  Run Keywords  Redfish.Login  AND
+    ...  Redfish Create User  readonly_user  TestPwd123  ReadOnly  ${True}
+    [Teardown]  Run Keywords  Redfish.Delete  /redfish/v1/AccountService/Accounts/readonly_user
+    ...  AND  Test Teardown Execution
+
+    # Reboot BMC.
+    Redfish OBMC Reboot (off)  stack_mode=normal
+
+    # Verify users after reboot.
     Redfish Verify User  readonly_user  TestPwd123  ReadOnly        ${True}
     #Redfish Verify User  callback_user  TestPwd123  Callback        ${True}
-
-    # Delete created users.
-    Redfish.Delete  /redfish/v1/AccountService/Accounts/admin_user
-    Redfish.Delete  /redfish/v1/AccountService/Accounts/operator_user
-    Redfish.Delete  /redfish/v1/AccountService/Accounts/readonly_user
-    #Redfish.Delete  /redfish/v1/AccountService/Accounts/callback_user
 
 Redfish Create and Verify Admin User
     [Documentation]  Create a Redfish user with administrator role and verify.
@@ -196,12 +216,13 @@ Verify Error Upon Creating Same Users With Different Privileges
     Redfish.Delete  /redfish/v1/AccountService/Accounts/test_user
     Redfish.Logout
 
+
 Verify Modifying User Attributes
     [Documentation]  Verify modifying user attributes.
     [Tags]  Verify_Modifying_User_Attributes
+
     # Create Redfish users.
     Redfish Create User  admin_user     TestPwd123  Administrator   ${True}
-    Redfish Create User  operator_user  TestPwd123  Operator        ${True}
     Redfish Create User  readonly_user  TestPwd123  ReadOnly        ${True}
     #Redfish Create User  callback_user  TestPwd123  Callback        ${True}
 
@@ -213,12 +234,8 @@ Verify Modifying User Attributes
     ${payload}=  Create Dictionary  UserName=newadmin_user
     Redfish.Patch  /redfish/v1/AccountService/Accounts/admin_user  body=&{payload}
 
-    # Update operator_user password using Redfish.
-    ${payload}=  Create Dictionary  Password=NewTestPwd123
-    Redfish.Patch  /redfish/v1/AccountService/Accounts/operator_user  body=&{payload}
-
     # Update readonly_user role using Redfish.
-    ${payload}=  Create Dictionary  RoleId=Operator
+    ${payload}=  Create Dictionary  RoleId=Administrator
     Redfish.Patch  /redfish/v1/AccountService/Accounts/readonly_user  body=&{payload}
 
     # Update callback_user to disable using Redfish.
@@ -227,15 +244,29 @@ Verify Modifying User Attributes
 
     # Verify users after updating
     Redfish Verify User  newadmin_user  TestPwd123     Administrator   ${True}
-    Redfish Verify User  operator_user  NewTestPwd123  Operator        ${True}
-    Redfish Verify User  readonly_user  TestPwd123     Operator        ${True}
-    #Redfish Verify User  callback_user  TestPwd123     Callback        ${False}
+    Redfish Verify User  readonly_user  TestPwd123     Administrator   ${True}
 
     # Delete created users.
     Redfish.Delete  /redfish/v1/AccountService/Accounts/newadmin_user
-    Redfish.Delete  /redfish/v1/AccountService/Accounts/operator_user
     Redfish.Delete  /redfish/v1/AccountService/Accounts/readonly_user
     #Redfish.Delete  /redfish/v1/AccountService/Accounts/callback_user
+
+
+Verify Modifying Operator User Attributes
+    [Documentation]  Verify modifying operator user attributes.
+    [Tags]  Verify_Modifying_Operator_User_Attributes
+    [Setup]  Run Keywords  Redfish.Login  AND
+    ...  Redfish Create User  operator_user  TestPwd123  Operator  ${True}
+    [Teardown]  Run Keywords  Redfish.Delete  /redfish/v1/AccountService/Accounts/operator_user
+    ...  AND  Test Teardown Execution
+
+    # Update operator_user password using Redfish.
+    ${payload}=  Create Dictionary  Password=NewTestPwd123
+    Redfish.Patch  /redfish/v1/AccountService/Accounts/operator_user  body=&{payload}
+
+    # Verify users after updating
+    Redfish Verify User  operator_user  NewTestPwd123  Operator        ${True}
+
 
 Verify User Account Locked
     [Documentation]  Verify user account locked upon trying with invalid password.
@@ -272,8 +303,30 @@ Verify Admin User Privilege
     [Tags]  Verify_Admin_User_Privilege
 
     Redfish Create User  admin_user  TestPwd123  Administrator  ${True}
-    Redfish Create User  operator_user  TestPwd123  Operator  ${True}
     Redfish Create User  readonly_user  TestPwd123  ReadOnly  ${True}
+
+    Redfish.Logout
+
+    Redfish.Login  admin_user  TestPwd123
+
+    # Change password of 'readonly' user with admin user.
+    Redfish.Patch  /redfish/v1/AccountService/Accounts/readonly_user  body={'Password': 'NewTestPwd123'}
+
+    # Verify modified user.
+    Redfish Verify User  readonly_user  NewTestPwd123  ReadOnly  ${True}
+
+    # Note: Delete user would work here because a root login is
+    # performed as part of "Redfish Verify User" keyword's teardown.
+    Redfish.Delete  /redfish/v1/AccountService/Accounts/admin_user
+    Redfish.Delete  /redfish/v1/AccountService/Accounts/readonly_user
+
+
+Verify Operator User Role Change Using Admin Privilege User
+    [Documentation]  Verify operator user role change using admin privilege user
+    [Tags]  Verify_Operator_User_Role_Change_Using_Admin_Privilege_User
+
+    Redfish Create User  admin_user  TestPwd123  Administrator  ${True}
+    Redfish Create User  operator_user  TestPwd123  Operator  ${True}
 
     Redfish.Logout
 
@@ -287,18 +340,9 @@ Verify Admin User Privilege
     # Verify modified user.
     Redfish Verify User  operator_user  TestPwd123  Administrator  ${True}
 
-    Redfish.Logout
-    Redfish.Login  admin_user  TestPwd123
-
-    # Change password of 'user' user with admin user.
-    Redfish.Patch  /redfish/v1/AccountService/Accounts/readonly_user  body={'Password': 'NewTestPwd123'}
-
-    # Verify modified user.
-    Redfish Verify User  readonly_user  NewTestPwd123  ReadOnly  ${True}
-
     Redfish.Delete  /redfish/v1/AccountService/Accounts/admin_user
     Redfish.Delete  /redfish/v1/AccountService/Accounts/operator_user
-    Redfish.Delete  /redfish/v1/AccountService/Accounts/readonly_user
+
 
 Verify Operator User Privilege
     [Documentation]  Verify operator user privilege.
@@ -437,6 +481,9 @@ Verify SSH Login Access With Admin User
     SSHLibrary.Open Connection  ${OPENBMC_HOST}
     ${status}=  Run Keyword And Return Status  SSHLibrary.Login  new_admin  TestPwd1
     Should Be Equal  ${status}  ${False}
+
+    Redfish.Login
+    Redfish.Delete  /redfish/v1/AccountService/Accounts/new_admin
 
 
 *** Keywords ***

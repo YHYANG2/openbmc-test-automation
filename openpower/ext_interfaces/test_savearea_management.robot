@@ -8,6 +8,7 @@ Resource          ../../lib/resource.robot
 Resource          ../../lib/bmc_redfish_utils.robot
 Resource          ../../lib/utils.robot
 Resource          ../../lib/bmc_redfish_resource.robot
+Resource          ../../lib/external_intf/management_console_utils.robot
 
 Suite Setup       Suite Setup Execution
 Test Teardown     Test Teardown Execution
@@ -366,7 +367,8 @@ Delete BMC Partition File
       ${headers}=  Create Dictionary  X-Auth-Token=${XAUTH_TOKEN}
       Set To Dictionary  ${data}  headers  ${headers}
 
-      ${resp}=  Delete Request  openbmc  /ibm/v1/Host/ConfigFiles/${conf_file}  &{data}
+      ${resp}=  DELETE On Session  openbmc  /ibm/v1/Host/ConfigFiles/${conf_file}  &{data}
+      ...  expected_status=any
       Should Be Equal As Strings  ${resp.status_code}  ${status_code}
 
       ${description}=  Return Description Of Response  ${resp.text}
@@ -386,7 +388,8 @@ Delete All BMC Partition File
     ${headers}=  Create Dictionary  X-Auth-Token=${XAUTH_TOKEN}
     Set To Dictionary  ${data}  headers  ${headers}
 
-    ${resp}=  Post Request  openbmc  /ibm/v1/Host/ConfigFiles/Actions/IBMConfigFiles.DeleteAll  &{data}
+    ${resp}=  POST On Session  openbmc  /ibm/v1/Host/ConfigFiles/Actions/IBMConfigFiles.DeleteAll  &{data}
+    ...  expected_status=any
     Should Be Equal As Strings  ${resp.status_code}  ${status_code}
 
 
@@ -428,7 +431,8 @@ Upload Partition File To BMC
 
       ${kwargs}=  Create Dictionary  data=${image_data}
       Set To Dictionary  ${kwargs}  headers  ${headers}
-      ${resp}=  Put Request  openbmc  /ibm/v1/Host/ConfigFiles/${conf_file}  &{kwargs}  timeout=10
+      ${resp}=  PUT On Session  openbmc  /ibm/v1/Host/ConfigFiles/${conf_file}  &{kwargs}  timeout=10
+      ...  expected_status=any
       Should Be Equal As Strings  ${resp.status_code}  ${status_code}
 
       ${description}=  Return Description Of Response  ${resp.text}
@@ -549,6 +553,7 @@ Verify Partition File Upload Post BMC Reboot
     Redfish BMC Reset Operation
     Set Global Variable  ${XAUTH_TOKEN}  ${before_reboot_xauth_token}
 
+    Wait Until Keyword Succeeds  3 min  10 sec  Redfish BMC Match States  match_state=Enabled
     Is BMC Standby
 
     Redfish Upload Partition File  ${file_name}
@@ -571,6 +576,7 @@ Redfish Partition File Persistency
     Redfish BMC Reset Operation
     Set Global Variable  ${XAUTH_TOKEN}  ${before_reboot_xauth_token}
 
+    Wait Until Keyword Succeeds  3 min  10 sec  Redfish BMC Match States  match_state=Enabled
     Is BMC Standby
 
     Verify Partition File On BMC  ${Partition_file_list}  Partition_status=1
@@ -592,7 +598,8 @@ Verify Redfish Partition File Content
     # status_code     HTTPS status code.
 
     FOR  ${conf_file}  IN  @{file_name}
-      ${resp}=  Get Request  openbmc  /ibm/v1/Host/ConfigFiles/${conf_file}
+      ${resp}=  GET On Session  openbmc  /ibm/v1/Host/ConfigFiles/${conf_file}
+      ...  expected_status=any
       Should Be Equal As Strings  ${resp.status_code}  ${status_code}
 
       ${Partition_file_data}=  Remove String  ${resp.text}  \\n
@@ -647,6 +654,7 @@ Redfish Read Partition File
     Run Keyword If  ${True} == ${reboot_flag}
     ...  Run Keywords  Redfish BMC Reset Operation  AND
     ...  Set Global Variable  ${XAUTH_TOKEN}  ${before_reboot_xauth_token}  AND
+    ...  Wait Until Keyword Succeeds  3 min  10 sec  Redfish BMC Match States  match_state=Enabled  AND
     ...  Is BMC Standby  AND
     ...  Initialize OpenBMC  AND
     ...  Verify Redfish Partition File Content  ${Partition_file_list}  ${content_dict}  ${HTTP_OK}
@@ -679,6 +687,7 @@ Redfish Update Partition File With Same Content
     Run Keyword If  ${True} == ${reboot_flag}
     ...  Run Keywords  Redfish BMC Reset Operation  AND
     ...  Set Global Variable  ${XAUTH_TOKEN}  ${before_reboot_xauth_token}  AND
+    ...  Wait Until Keyword Succeeds  3 min  10 sec  Redfish BMC Match States  match_state=Enabled  AND
     ...  Is BMC Standby  AND
     ...  Initialize OpenBMC
 
@@ -711,6 +720,7 @@ Redfish Update Partition File With Different Content
     Run Keyword If  ${True} == ${reboot_flag}
     ...  Run Keywords  Redfish BMC Reset Operation  AND
     ...  Set Global Variable  ${XAUTH_TOKEN}  ${before_reboot_xauth_token}  AND
+    ...  Wait Until Keyword Succeeds  3 min  10 sec  Redfish BMC Match States  match_state=Enabled  AND
     ...  Is BMC Standby  AND
     ...  Initialize OpenBMC
 

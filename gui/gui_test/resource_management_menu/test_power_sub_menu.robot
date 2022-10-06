@@ -10,10 +10,15 @@ Suite Teardown  Close Browser
 
 *** Variables ***
 
-${xpath_power_heading}             //h1[text()="Power"]
-${xpath_power_ops_checkbox}        //*[@data-test-id='power-checkbox-togglePowerCapField']
-${xpath_cap_input_button}          //*[@data-test-id='power-input-powerCap']
-${xpath_submit_button}             //*[@data-test-id='power-button-savePowerCapValue']
+${xpath_power_heading}                //h1[text()="Power"]
+${xpath_power_ops_checkbox}           //*[@data-test-id='power-checkbox-togglePowerCapField']
+${xpath_cap_input_button}             //*[@data-test-id='power-input-powerCap']
+${xpath_submit_button}                //*[@data-test-id='power-button-savePowerCapValue']
+${xpath_select_static}                //input[@value='Static']
+${xpath_select_powersaving}           //input[@value='PowerSaving']
+${xpath_select_maximum_performance}   //input[@value='MaximumPerformance']
+${xpath_update_power_save_mode}       //button[contains(text(),'Update power saver mode')]
+${xpath_page_loading_progress_bar}    //*[@aria-label='Page loading progress bar']
 
 *** Test Cases ***
 
@@ -31,7 +36,8 @@ Verify Existence Of All Sections In Power Page
     Page Should Contain  Current power consumption
     Page Should Contain  Power cap setting
     Page Should Contain  Power cap value
-
+    Page Should Contain  Power and performance mode
+    Page Should Contain  Idle power saver
 
 Verify Existence Of All Buttons In Power Page
     [Documentation]  Verify existence of all buttons in power page.
@@ -40,6 +46,10 @@ Verify Existence Of All Buttons In Power Page
     Page Should Contain Element  ${xpath_power_ops_checkbox}
     Page Should Contain Element  ${xpath_cap_input_button}
     Page Should Contain Element  ${xpath_submit_button}
+    Page Should Contain Element  ${xpath_select_static}
+    Page Should Contain Element  ${xpath_select_powersaving}
+    Page Should Contain Element  ${xpath_select_maximum_performance}
+    Page Should Contain Element  ${xpath_update_power_save_mode}
 
 
 Verify Server Power Cap Setting Is On
@@ -144,3 +154,4 @@ Suite Setup Execution
     Click Element  ${xpath_resource_management_menu}
     Click Element  ${xpath_power_sub_menu}
     Wait Until Keyword Succeeds  30 sec  10 sec  Location Should Contain  power
+    Wait Until Element Is Not Visible   ${xpath_page_loading_progress_bar}  timeout=30

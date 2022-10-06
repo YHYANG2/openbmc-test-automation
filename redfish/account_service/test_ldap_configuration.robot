@@ -4,13 +4,14 @@ Library          ../../lib/gen_robot_valid.py
 Resource         ../../lib/resource.robot
 Resource         ../../lib/bmc_redfish_resource.robot
 Resource         ../../lib/openbmc_ffdc.robot
+Resource         ../../lib/utils.robot
 Library          ../../lib/gen_robot_valid.py
 Resource         ../../lib/bmc_network_utils.robot
 Resource         ../../lib/bmc_ldap_utils.robot
 
 Suite Setup      Suite Setup Execution
-Suite Teardown   Run Keywords  Restore LDAP Privilege  AND  Redfish.Logout
-Test Teardown    FFDC On Test Case Fail
+Suite Teardown   LDAP Suite Teardown Execution
+Test Teardown    Run Keywords  Redfish.Login  AND  FFDC On Test Case Fail
 
 Force Tags       LDAP_Test
 
@@ -34,7 +35,6 @@ Verify LDAP Configuration Created
     Sleep  10s
     Redfish.Login  ${LDAP_USER}  ${LDAP_USER_PASSWORD}
     Redfish.Logout
-    Redfish.Login
 
 
 Verify LDAP Service Disable
@@ -54,7 +54,6 @@ Verify LDAP Service Disable
     Redfish.Patch  ${REDFISH_BASE_URI}AccountService
     ...  body={'${LDAP_TYPE}': {'ServiceEnabled': ${True}}}
     Redfish.Logout
-    Redfish.Login
 
 
 Verify LDAP Login With ServiceEnabled
@@ -68,7 +67,6 @@ Verify LDAP Login With ServiceEnabled
     # After update, LDAP login.
     Redfish.Login  ${LDAP_USER}  ${LDAP_USER_PASSWORD}
     Redfish.Logout
-    Redfish.Login
 
 
 Verify LDAP Login With Correct AuthenticationType
@@ -80,7 +78,6 @@ Verify LDAP Login With Correct AuthenticationType
     # After update, LDAP login.
     Redfish.Login  ${LDAP_USER}  ${LDAP_USER_PASSWORD}
     Redfish.Logout
-    Redfish.Login
 
 
 Verify LDAP Config Update With Incorrect AuthenticationType
@@ -120,7 +117,6 @@ Verify LDAP User Login
     [Tags]  Verify_LDAP_User_Login
     Redfish.Login  ${LDAP_USER}  ${LDAP_USER_PASSWORD}
     Redfish.Logout
-    Redfish.Login
 
 
 Verify LDAP Service Available
@@ -137,7 +133,6 @@ Verify LDAP Login Works After BMC Reboot
     Redfish OBMC Reboot (off)
     Redfish.Login  ${LDAP_USER}  ${LDAP_USER_PASSWORD}
     Redfish.Logout
-    Redfish.Login
 
 
 Verify LDAP User With Admin Privilege Able To Do BMC Reboot
@@ -151,7 +146,6 @@ Verify LDAP User With Admin Privilege Able To Do BMC Reboot
     Redfish OBMC Reboot (off)
     Redfish.Login  ${LDAP_USER}  ${LDAP_USER_PASSWORD}
     Redfish.Logout
-    Redfish.Login
 
 
 Verify LDAP User With Operator Privilege Able To Do Host Poweroff
@@ -312,6 +306,7 @@ Verify LDAP Login With Invalid Data
     ...  right LDAP user fails.
     [Tags]  Verify_LDAP_Login_With_Invalid_Data
     [Teardown]  Run Keywords  FFDC On Test Case Fail  AND
+    ...  Redfish.Login  AND
     ...  Create LDAP Configuration
 
     ${status}=  Run Keyword And Return Status  Create LDAP Configuration
@@ -328,6 +323,7 @@ Verify LDAP Config Creation Without BASE_DN
     ...  created without BASE_DN fails.
     [Tags]  Verify_LDAP_Config_Creation_Without_BASE_DN
     [Teardown]  Run Keywords  FFDC On Test Case Fail  AND
+    ...  Redfish.Login  AND
     ...  Create LDAP Configuration
 
     ${status}=  Run Keyword And Return Status  Create LDAP Configuration
@@ -353,6 +349,7 @@ Verify LDAP Login With Invalid BASE_DN
     ...  valid LDAP user fails.
     [Tags]  Verify_LDAP_Login_With_Invalid_BASE_DN
     [Teardown]  Run Keywords  FFDC On Test Case Fail  AND
+    ...  Redfish.Login  AND
     ...  Create LDAP Configuration
 
     Create LDAP Configuration  ${LDAP_TYPE}  ${LDAP_SERVER_URI}
@@ -366,6 +363,7 @@ Verify LDAP Login With Invalid BIND_DN_PASSWORD
     ...  valid LDAP user fails.
     [Tags]  Verify_LDAP_Login_With_Invalid_BIND_DN_PASSWORD
     [Teardown]  Run Keywords  FFDC On Test Case Fail  AND
+    ...  Redfish.Login  AND
     ...  Create LDAP Configuration
 
     Create LDAP Configuration  ${LDAP_TYPE}  ${LDAP_SERVER_URI}
@@ -379,6 +377,7 @@ Verify LDAP Login With Invalid BASE_DN And Invalid BIND_DN
     ...  BIND_DN and valid LDAP user fails.
     [Tags]  Verify_LDAP_Login_With_Invalid_BASE_DN_And_Invalid_BIND_DN
     [Teardown]  Run Keywords  FFDC On Test Case Fail  AND
+    ...  Redfish.Login  AND
     ...  Create LDAP Configuration
 
     Create LDAP Configuration  ${LDAP_TYPE}  ${LDAP_SERVER_URI}
@@ -403,6 +402,7 @@ Verify LDAP Login With Invalid BIND_DN
     ...  valid LDAP user fails.
     [Tags]  Verify_LDAP_Login_With_Invalid_BIND_DN
     [Teardown]  Run Keywords  FFDC On Test Case Fail  AND
+    ...  Redfish.Login  AND
     ...  Create LDAP Configuration
 
     Create LDAP Configuration  ${LDAP_TYPE}  ${LDAP_SERVER_URI}
@@ -587,7 +587,7 @@ Update LDAP Config And Verify Set Host Name
     # valid_status_codes            Expected return code(s) from patch
     #                               operation (e.g. "200") used to update
     #                               HostName.  See prolog of rest_request
-    #                               method in redfish_plut.py for details.
+    #                               method in redfish_plus.py for details.
     Update LDAP Configuration with LDAP User Role And Group  ${LDAP_TYPE}
     ...  ${group_privilege}  ${group_name}
 
@@ -681,6 +681,14 @@ Suite Setup Execution
     Set Suite Variable  ${original_ntp}
 
 
+LDAP Suite Teardown Execution
+    [Documentation]  Restore ldap configuration, delete unused redfish session.
+
+    Restore LDAP Privilege
+    Redfish.Logout
+    Run Keyword And Ignore Error  Delete All Redfish Sessions
+
+
 Set Read Privilege And Check Firmware Inventory
     [Documentation]  Set read privilege and check firmware inventory.
     [Arguments]  ${read_privilege}
@@ -769,6 +777,9 @@ Verify Host Power Status
     [Documentation]  Verify the Host power status and do host power on/off respectively.
     [Arguments]  ${expected_power_status}
 
+    # Description of argument(s):
+    # expected_power_status  State of Host e.g. Off or On.
+
     ${power_status}=  Redfish.Get Attribute  /redfish/v1/Chassis/${CHASSIS_ID}  PowerState
     Return From Keyword If  '${power_status}' == '${expected_power_status}'
 
@@ -797,6 +808,10 @@ Update LDAP User Role And Host Poweroff
     Redfish.Post  ${REDFISH_POWER_URI}
     ...  body={'ResetType': 'ForceOff'}   valid_status_codes=[${valid_status_code}]
 
+    Return From Keyword If  ${valid_status_code} == ${HTTP_FORBIDDEN}
+    Wait Until Keyword Succeeds  1 min  10 sec  Verify Host Power State  Off
+
+
 Update LDAP User Role And Host Poweron
     [Documentation]  Update LDAP user role and do host poweron.
     [Arguments]  ${ldap_type}  ${group_privilege}  ${group_name}  ${valid_status_code}
@@ -819,10 +834,8 @@ Update LDAP User Role And Host Poweron
     Redfish.Post  ${REDFISH_POWER_URI}
     ...  body={'ResetType': 'On'}   valid_status_codes=[${valid_status_code}]
 
-    # to avoid no access user logout error, login first
-    Run Keyword If  '${group_privilege}' == 'NoAccess'
-    ...  Redfish.Login
-
+    Return From Keyword If  ${valid_status_code} == ${HTTP_FORBIDDEN}
+    Verify Host Is Up
 
 Update LDAP User Role And Configure IP Address
     [Documentation]  Update LDAP user role and configure IP address.

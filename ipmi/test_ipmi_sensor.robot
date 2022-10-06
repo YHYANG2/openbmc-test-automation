@@ -46,21 +46,12 @@ Test Ambient Temperature Via IPMI
 
     # Example of IPMI dcmi get_temp_reading output:
     #        Entity ID                       Entity Instance    Temp. Readings
-    # Inlet air temperature(40h)                      1               +19 C
-    # CPU temperature sensors(41h)                    5               +51 C
-    # CPU temperature sensors(41h)                    6               +50 C
-    # CPU temperature sensors(41h)                    7               +50 C
-    # CPU temperature sensors(41h)                    8               +50 C
-    # CPU temperature sensors(41h)                    9               +50 C
-    # CPU temperature sensors(41h)                    10              +48 C
-    # CPU temperature sensors(41h)                    11              +49 C
-    # CPU temperature sensors(41h)                    12              +47 C
-    # CPU temperature sensors(41h)                    8               +50 C
-    # CPU temperature sensors(41h)                    16              +51 C
-    # CPU temperature sensors(41h)                    24              +50 C
-    # CPU temperature sensors(41h)                    32              +43 C
-    # CPU temperature sensors(41h)                    40              +43 C
-    # Baseboard temperature sensors(42h)              1               +35 C
+    # Inlet air temperature(40h)                      1               +22 C
+    # Inlet air temperature(40h)                      2               +23 C
+    # Inlet air temperature(40h)                      3               +22 C
+    # CPU temperature sensors(41h)                    0               +0 C
+    # Baseboard temperature sensors(42h)              1               +26 C
+    # Baseboard temperature sensors(42h)              2               +27 C
 
     ${temp_reading}=  Run IPMI Standard Command  dcmi get_temp_reading -N 10
     Should Contain  ${temp_reading}  Inlet air temperature
@@ -70,34 +61,24 @@ Test Ambient Temperature Via IPMI
     ...  Get Lines Containing String  ${temp_reading}
     ...  Inlet air temperature  case-insensitive
 
-    ${ambient_temp_ipmi}=  Set Variable  ${ambient_temp_line.split('+')[1].strip(' C')}
+    ${ambient_temp_line}=  Split To Lines  ${ambient_temp_line}
+    ${ipmi_temp_list}=  Create List
+    FOR  ${line}  IN  @{ambient_temp_line}
+        ${ambient_temp_ipmi}=  Set Variable  ${line.split('+')[1].strip(' C')}
+        Append To List  ${ipmi_temp_list}  ${ambient_temp_ipmi}
+    END
+    ${list_length}=  Get Length  ${ipmi_temp_list}
 
-    # Example of ambient temperature via Redfish
+    # Getting temperature readings from Redfish.
+    ${ambient_temp_redfish}=  Get Temperature Reading From Redfish  Ambient
+    ${ambient_temp_redfish}=  Get Dictionary Values  ${ambient_temp_redfish}  sort_keys=True
+    FOR  ${index}  IN RANGE  ${list_length}
+        ${ipmi_redfish_temp_diff}=
+        ...  Evaluate  abs(${ambient_temp_redfish[${index}]} - ${ipmi_temp_list[${index}]})
 
-    #"@odata.id": "/redfish/v1/Chassis/chassis/Thermal#/Temperatures/0",
-    #"@odata.type": "#Thermal.v1_3_0.Temperature",
-    #"LowerThresholdCritical": 0.0,
-    #"LowerThresholdNonCritical": 0.0,
-    #"MaxReadingRangeTemp": 0.0,
-    #"MemberId": "ambient",
-    #"MinReadingRangeTemp": 0.0,
-    #"Name": "ambient",
-    #"ReadingCelsius": 24.987000000000002,
-    #"Status": {
-          #"Health": "OK",
-          #"State": "Enabled"
-    #},
-    #"UpperThresholdCritical": 35.0,
-    #"UpperThresholdNonCritical": 25.0
-
-    ${ambient_temp_redfish}=  Get Temperature Reading From Redfish  inlet
-
-    ${ipmi_redfish_temp_diff}=
-    ...  Evaluate  abs(${ambient_temp_redfish} - ${ambient_temp_ipmi})
-
-    Should Be True  ${ipmi_redfish_temp_diff} <= ${allowed_temp_diff}
-    ...  msg=Ambient temperature above allowed threshold ${allowed_temp_diff}.
-
+        Should Be True  ${ipmi_redfish_temp_diff} <= ${allowed_temp_diff}
+        ...  msg=Ambient temperature above allowed threshold ${allowed_temp_diff}.
+    END
 
 Test Power Reading Via IPMI With Host Off
     [Documentation]  Verify power reading via IPMI with host in off state
@@ -127,55 +108,38 @@ Test Baseboard Temperature Via IPMI
 
     # Example of IPMI dcmi get_temp_reading output:
     #        Entity ID                       Entity Instance    Temp. Readings
-    # Inlet air temperature(40h)                      1               +19 C
-    # CPU temperature sensors(41h)                    5               +51 C
-    # CPU temperature sensors(41h)                    6               +50 C
-    # CPU temperature sensors(41h)                    7               +50 C
-    # CPU temperature sensors(41h)                    8               +50 C
-    # CPU temperature sensors(41h)                    9               +50 C
-    # CPU temperature sensors(41h)                    10              +48 C
-    # CPU temperature sensors(41h)                    11              +49 C
-    # CPU temperature sensors(41h)                    12              +47 C
-    # CPU temperature sensors(41h)                    8               +50 C
-    # CPU temperature sensors(41h)                    16              +51 C
-    # CPU temperature sensors(41h)                    24              +50 C
-    # CPU temperature sensors(41h)                    32              +43 C
-    # CPU temperature sensors(41h)                    40              +43 C
-    # Baseboard temperature sensors(42h)              1               +35 C
+    # Inlet air temperature(40h)                      1               +22 C
+    # Inlet air temperature(40h)                      2               +23 C
+    # Inlet air temperature(40h)                      3               +22 C
+    # CPU temperature sensors(41h)                    0               +0 C
+    # Baseboard temperature sensors(42h)              1               +26 C
+    # Baseboard temperature sensors(42h)              2               +27 C
 
     ${temp_reading}=  Run IPMI Standard Command  dcmi get_temp_reading -N 10
     Should Contain  ${temp_reading}  Baseboard temperature sensors
     ...  msg="Unable to get baseboard temperature via DCMI".
-    ${baseboard_temp_line}=
+    ${baseboard_temp_lines}=
     ...  Get Lines Containing String  ${temp_reading}
     ...  Baseboard temperature  case-insensitive=True
+    ${lines}=  Split To Lines  ${baseboard_temp_lines}
 
-    ${baseboard_temp_ipmi}=  Set Variable  ${baseboard_temp_line.split('+')[1].strip(' C')}
+    ${ipmi_temp_list}=  Create List
+    FOR  ${line}  IN  @{lines}
+        ${baseboard_temp_ipmi}=  Set Variable  ${line.split('+')[1].strip(' C')}
+        Append To List  ${ipmi_temp_list}  ${baseboard_temp_ipmi} 
+    END
+    ${list_length}=  Get Length  ${ipmi_temp_list}
 
-    # Example of Baseboard temperature via Redfish
+    # Getting temperature readings from Redfish.
+    ${baseboard_temp_redfish}=  Get Temperature Reading From Redfish  PCIE
+    ${baseboard_temp_redfish}=  Get Dictionary Values  ${baseboard_temp_redfish}  sort_keys=True
 
-    #"@odata.id": "/redfish/v1/Chassis/chassis/Thermal#/Temperatures/9",
-    #"@odata.type": "#Thermal.v1_3_0.Temperature",
-    #"LowerThresholdCritical": 0.0,
-    #"LowerThresholdNonCritical": 0.0,
-    #"MaxReadingRangeTemp": 0.0,
-    #"MemberId": "pcie",
-    #"MinReadingRangeTemp": 0.0,
-    #"Name": "pcie",
-    #"ReadingCelsius": 28.687,
-    #"Status": {
-          #"Health": "OK",
-          #"State": "Enabled"
-    #},
-    #"UpperThresholdCritical": 70.0,
-    #"UpperThresholdNonCritical": 60.0
-
-    ${baseboard_temp_redfish}=  Get Temperature Reading From Redfish  bmc_card
-
-    Should Be True
-    ...  ${baseboard_temp_redfish} - ${baseboard_temp_ipmi} <= ${allowed_temp_diff}
-    ...  msg=Baseboard temperature above allowed threshold ${allowed_temp_diff}.
-
+    FOR  ${index}  IN RANGE  ${list_length}
+        ${baseboard_temp_diff}=  Evaluate  abs(${baseboard_temp_redfish[${index}]} - ${ipmi_temp_list[${index}]})
+        Should Be True
+        ...  ${baseboard_temp_diff} <= ${allowed_temp_diff}
+        ...  msg=Baseboard temperature above allowed threshold ${allowed_temp_diff}.
+    END
 
 Test Power Reading Via IPMI Raw Command
     [Documentation]  Test power reading via IPMI raw command and verify
@@ -190,25 +154,25 @@ Test Power Reading Via IPMI Raw Command
 Verify CPU Present
     [Documentation]  Verify the IPMI sensor for CPU present using Redfish.
     [Tags]  Verify_CPU_Present
-    [Template]  Enable Present Bit Via IPMI and Verify Using Redfish
+    [Template]  Set Present Bit Via IPMI and Verify Using Redfish
 
-    # sensor_id  component
-    0x5a         cpu0
+    # component  state
+    cpu          Enabled
 
 
 Verify CPU Not Present
     [Documentation]  Verify the IPMI sensor for CPU not present using Redfish.
     [Tags]  Verify_CPU_Not_Present
-    [Template]  Disable Present Bit Via IPMI and Verify Using Redfish
+    [Template]  Set Present Bit Via IPMI and Verify Using Redfish
 
-    # sensor_id  component
-    0x5a         cpu0
+    # component  state
+    cpu          Absent
 
 
 Verify GPU Present
     [Documentation]  Verify the IPMI sensor for GPU present using Redfish.
     [Tags]  Verify_GPU_Present
-    [Template]  Enable Present Bit Via IPMI and Verify Using Redfish
+    [Template]  Set Present Bit Via IPMI and Verify Using Redfish
 
     # sensor_id  component
     0xC5         gv100card0
@@ -217,7 +181,7 @@ Verify GPU Present
 Verify GPU Not Present
     [Documentation]  Verify the IPMI sensor for GPU not present using Redfish.
     [Tags]  Verify_GPU_Not_Present
-    [Template]  Disable Present Bit Via IPMI and Verify Using Redfish
+    [Template]  Set Present Bit Via IPMI and Verify Using Redfish
 
     # sensor_id  component
     0xC5         gv100card0
@@ -294,13 +258,32 @@ Get Temperature Reading From Redfish
     # Description of argument(s):
     # member_id    Member id of temperature.
 
-    @{redfish_readings}=  Redfish.Get Attribute  /redfish/v1/Chassis/chassis/Thermal  Temperatures
+    @{thermal_uri}=  redfish_utils.Get Member List  /redfish/v1/Chassis/
+    @{redfish_readings}=  redfish_utils.Get Attribute  ${thermal_uri[0]}/${THERMAL_METRICS}  TemperatureReadingsCelsius
+
+    # Example of Baseboard temperature via Redfish
+
+    # "@odata.id": "/redfish/v1/Chassis/chassis/ThermalSubsystem/ThermalMetrics",
+    # "@odata.type": "#ThermalMetrics.v1_0_0.ThermalMetrics",
+    # "Id": "ThermalMetrics",
+    # "Name": "Chassis Thermal Metrics",
+    # "TemperatureReadingsCelsius": [
+    # {
+    # "@odata.id": "/redfish/v1/Chassis/chassis/Sensors/PCIE_0_Temp",
+    # "DataSourceUri": "/redfish/v1/Chassis/chassis/Sensors/PCIE_0_Temp",
+    # "DeviceName": "PCIE_0_Temp",
+    # "Reading": 23.75
+    # },
+
+    ${redfish_value_dict}=  Create Dictionary
     FOR  ${data}  IN  @{redfish_readings}
-        ${redfish_value}=  Set Variable If  '${data}[MemberId]' == '${member_id}'
-        ...  ${data}[ReadingCelsius]
-        Exit For Loop If  '${data}[MemberId]' == '${member_id}'
+        ${contains}=  Evaluate  "${member_id}" in """${data}[DeviceName]"""
+        ${reading}=  Set Variable  ${data}[Reading]
+        Run Keyword IF  "${contains}" == "True"
+        ...  Set To Dictionary  ${redfish_value_dict}  ${data}[DeviceName]  ${reading}
     END
-    [Return]  ${redfish_value}
+
+    [Return]  ${redfish_value_dict}
 
 
 Verify Power Reading Using IPMI And Redfish
@@ -365,7 +348,7 @@ Verify Power Reading Via Raw Command
     #  "Name": "Chassis Power Control",
     #  "PowerConsumedWatts": 145.0,
 
-    ${power}=  Redfish.Get Properties  /redfish/v1/Chassis/chassis/Power
+    ${power}=  Redfish.Get Properties  /redfish/v1/Chassis/${CHASSIS_ID}/Power
     ${redfish_reading}=  Set Variable  ${power['PowerControl'][0]['PowerConsumedWatts']}
 
     ${ipmi_redfish_power_diff}=
@@ -375,60 +358,41 @@ Verify Power Reading Via Raw Command
     ...  msg=Power reading above allowed threshold ${allowed_power_diff}.
 
 
-Enable Present Bit Via IPMI and Verify Using Redfish
-    [Documentation]  Enable present bit of sensor via IPMI and verify using Redfish.
-    [Arguments]  ${sensor_id}  ${component}
+Set Present Bit Via IPMI and Verify Using Redfish
+    [Documentation]  Set present bit of sensor via IPMI and verify using Redfish.
+    [Arguments]  ${component}  ${status}
 
     # Description of argument(s):
-    # sensor_id    The sensor id of IPMI sensor.
     # component    The Redfish component of IPMI sensor.
+    # status  Status of the bit to be set(e.g. Absent, Present).
 
-    Run IPMI Command
-    ...  0x04 0x30 ${sensor_id} 0xa9 0x00 0x80 0x00 0x00 0x00 0x00 0x20 0x00
+    ${sensor_list}=  Get Available Sensors  ${component}
+    ${sensor_name}=  Set Variable  ${sensor_list[0]}
+    ${sensor_id}=  Get Sensor Id For Sensor  ${sensor_name}
 
-    #  Example of CPU state via Redfish
+     Run Keyword If  '${status}' == 'Absent'
+     ...  Run IPMI Command
+     ...  0x04 0x30 ${sensor_id} 0xa9 0x00 0x00 0x00 0x80 0x00 0x00 0x20 0x00
+     ...  ELSE IF  '${status}' == 'Enabled'
+     ...  Run IPMI Command
+     ...  0x04 0x30 ${sensor_id} 0xa9 0x00 0x80 0x00 0x00 0x00 0x00 0x20 0x00
 
-    #"Name": "Processor",
-    #"ProcessorArchitecture": "Power",
-    #"ProcessorType": "CPU",
-    #"Status": {
-    #    "Health": "OK",
-    #    "State": "Enabled"
-    #}
+     # Redfish cpu components have "-" instead of "_" (e.g.: dcm0-cpu0).
+     ${cpu_name}=  Replace String  ${sensor_name}  _  -
+     ${sensor_properties}=  Redfish.Get Properties  /redfish/v1/Systems/system/Processors/${cpu_name}
 
-    # Python module:  get_endpoint_path_list(resource_path, end_point_prefix)
-    ${processor_list}=  redfish_utils.Get Endpoint Path List   /redfish/v1/Systems/  Processors
+     #  Example of CPU state via Redfish
 
-    ${redfish_value}=  Redfish.Get Properties  ${processor_list[0]}/${component}
-    Should Be True  '${redfish_value['Status']['State']}' == 'Enabled'
+     # "ProcessorType": "CPU",
+     # "SerialNumber": "YA1936422499",
+     # "Socket": "",
+     # "SparePartNumber": "F210110",
+     # "Status": {
+     # "Health": "OK",
+     # "State": "Absent"
+     # }
 
-
-Disable Present Bit Via IPMI and Verify Using Redfish
-    [Documentation]  Disable present bit of sensor via IPMI and verify using Redfish.
-    [Arguments]  ${sensor_id}  ${component}
-
-    # Description of argument(s):
-    # sensor_id    The sensor id of IPMI sensor.
-    # component    The Redfish component of IPMI sensor.
-
-    Run IPMI Command
-    ...  0x04 0x30 ${sensor_id} 0xa9 0x00 0x00 0x00 0x80 0x00 0x00 0x20 0x00
-
-    #  Example of CPU state via Redfish
-
-    #"Name": "Processor",
-    #"ProcessorArchitecture": "Power",
-    #"ProcessorType": "CPU",
-    #"Status": {
-    #    "Health": "OK",
-    #    "State": "Absent"
-    #}
-
-    # Python module:  get_endpoint_path_list(resource_path, end_point_prefix)
-    ${processor_list}=  redfish_utils.Get Endpoint Path List   /redfish/v1/Systems/  Processors
-
-    ${redfish_value}=  Redfish.Get Properties  ${processor_list[0]}/${component}
-    Should Be True  '${redfish_value['Status']['State']}' == 'Absent'
+     Should Be True  '${sensor_properties['Status']['State']}' == '${status}'
 
 
 Verify Power Supply Sensor Threshold
@@ -481,8 +445,74 @@ Verify Power Supply Sensor Threshold
     # "UpperThresholdCritical": 300.0,
     # "UpperThresholdNonCritical": 290.0
 
-    @{redfish_readings}=  Redfish.Get Attribute  /redfish/v1/Chassis/chassis/Power  Voltages
+    @{redfish_readings}=  Redfish.Get Attribute  /redfish/v1/Chassis/${CHASSIS_ID}/Power  Voltages
     FOR  ${data}  IN  @{redfish_readings}
         Run keyword if  '${data}[MemberId]' == 'ps0_input_voltage'
         ...  Should Be Equal As Numbers  ${data['${redfish_threshold_id}']}  ${ipmi_threshold_reading}
     END
+
+
+Get Available Sensors
+    [Documentation]  Get all the available sensors for the required component.
+    ...  Returns a list of available sensors.
+    [Arguments]  ${sensor_component}
+
+    # Description of argument(s):
+    # sensor_component     sensor component name.(e.g.:cpu)
+
+    ${resp}=  Run IPMI Standard Command  sdr elist
+    ${sensor_list}=  Create List
+    ${sensors}=  Get Lines Containing String  ${resp}  ${sensor_component}
+    ${sensors}=  Split To Lines  ${sensors}
+
+    # Example of IPMI sdr elist command.
+
+    # dcm0_cpu0        | 41h | ok  |  3.1 | Presence detected
+    # dcm0_cpu1        | 42h | ok  |  3.2 | Presence detected, Disabled
+    # dcm1_cpu0        | 43h | ok  |  3.3 | Presence detected
+    # dcm1_cpu1        | 44h | ok  |  3.4 | Presence detected, Disabled
+    # dcm2_cpu0        | 45h | ns  |  3.5 | Disabled
+    # dcm2_cpu1        | 46h | ns  |  3.6 | Disabled
+    # dcm3_cpu0        | 47h | ns  |  3.7 | Disabled
+    # dcm3_cpu1        | 48h | ns  |  3.8 | Disabled
+
+    FOR  ${line}  IN  @{sensors}
+        ${sensor_name}=  Set Variable  ${line.split('|')[0].strip()}
+
+        # Adding sensors to the list whose presence is detected.
+        ${contains}=  Evaluate  "Presence detected" in "${line}"
+        Run Keyword IF  "${contains}" == "True"
+        ...  Append To List  ${sensor_list}  ${sensor_name}
+    END
+
+    # Example of output for ${sensor_list}
+    # ['dcm0_cpu0', 'dcm0_cpu1', 'dcm1_cpu0', 'dcm1_cpu1']
+
+    [RETURN]  ${sensor_list}
+
+
+Get Sensor Id For Sensor
+    [Documentation]  Returns the sensor ID value for the given sensor.
+    [Arguments]  ${sensor_name}
+
+    # Description of argument(s):
+    # sensor_name     Name of sensor whose ID is required(e.g.: dcm0_cpu0, dcm0_cpu1 etc).
+
+    ${get_resp}=  Run IPMI Standard Command  sensor get ${sensor_name}
+
+    # Example of sensor get command.
+
+    # Locating sensor record...
+    # Sensor ID              : dcm0_cpu0 (0x41)
+    # Entity ID             : 3.1
+    # Sensor Type (Discrete): Processor
+    # States Asserted       : Processor
+    #                  [Presence detected]
+
+    ${line}=  Get Lines Containing String  ${get_resp}  Sensor ID
+    ${sensor_id}=  Set Variable  ${line[-5:-1]}
+
+    # Example of output for ${sensor_id} is 0x41.
+
+    [RETURN]  ${sensor_id}
+

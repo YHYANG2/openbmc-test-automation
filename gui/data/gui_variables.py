@@ -42,7 +42,7 @@ class gui_variables():
     xpath_factory_reset_sub_menu = "//*[@data-test-id='nav-item-factory-reset']"
     xpath_firmware_update_sub_menu = "//*[@data-test-id='nav-item-firmware']"
     xpath_reboot_bmc_sub_menu = "//*[@data-test-id='nav-item-reboot-bmc']"
-    xpath_host_console_sub_menu = " //*[@data-test-id='nav-item-host-console']"
+    xpath_host_console_sub_menu = "//*[@data-test-id='nav-item-host-console']"
     xpath_server_power_operations_sub_menu = "//*[@data-test-id='nav-item-server-power-operations']"
     xpath_host_console_heading = "//h1[text()='Host console']"
 
@@ -76,7 +76,7 @@ class gui_variables():
     xpath_confirm_button = "//button[contains(text(),'Confirm')]"
     xpath_cancel_button = "//button[contains(text(),'Cancel')]"
     xpath_add_button = "//button[normalize-space(text())='Add']"
-    xpath_page_loading_progress_ba = "//*[@aria-label='Page loading progress bar']"
+    xpath_page_loading_progress_bar = "//*[@aria-label='Page loading progress bar']"
     # Reboot sub meanu
     xpath_reboot_bmc_heading = "//h1[text()='Reboot BMC']"
     xpath_reboot_bmc_button = "//button[contains(text(),'Reboot BMC')]"
