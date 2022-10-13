@@ -51,9 +51,8 @@ Get The Dump Id
     #        The "data" field conveys the id number of the created dump.
 
     Should Be Equal As Strings  ${resp.status_code}  ${HTTP_OK}
-    ${json}=  To JSON  ${resp.content}
 
-    Run Keyword If  ${json["data"]} == ${None}
+    Run Keyword If  ${resp.json()["data"]} == ${None}
     ...  Fail  Dump id returned null.
 
     ${dump_id}=  Set Variable  ${json["data"]}
@@ -84,8 +83,7 @@ Check For Too Many Dumps
     Run Keyword If  '${resp.status_code}' == '${HTTP_OK}'
     ...  Run Keyword And Return  Get The Dump Id  ${resp}
 
-    ${json}=  To JSON   ${resp.content}
-    ${exception}=  Set Variable  ${json["message"]}
+    ${exception}=  Set Variable  ${resp.json()["message"]}
     ${at_capacity}=  Set Variable  Dump not captured due to a cap
     ${too_many_dumps}=  Evaluate  $at_capacity in $exception
     Printn
@@ -131,9 +129,9 @@ Delete BMC Dump
     Run Keyword If  '${resp.status_code}' == '${HTTP_NOT_FOUND}'
     ...  Set Global Variable  ${DUMP_ENTRY_URI}  /xyz/openbmc_project/dump/entry/
 
-    ${data}=  Create Dictionary  data=@{EMPTY}
+    ${args}=  Set Variable   {"data": []}
     ${resp}=  OpenBMC Post Request
-    ...  ${DUMP_ENTRY_URI}${dump_id}/action/Delete  data=${data}
+    ...  ${DUMP_ENTRY_URI}${dump_id}/action/Delete  data=${args}
 
     Should Be Equal As Strings  ${resp.status_code}  ${HTTP_OK}
 
@@ -189,8 +187,8 @@ Delete All BMC Dump
     Run Keyword If  '${resp.status_code}' == '${HTTP_NOT_FOUND}'
     ...  Set Global Variable  ${REST_DUMP_URI}  /xyz/openbmc_project/dump/
 
-    ${data}=  Create Dictionary  data=@{EMPTY}
-    ${resp}=  Openbmc Post Request  ${REST_DUMP_URI}action/DeleteAll  data=${data}
+    ${args}=  Set Variable   {"data": []}
+    ${resp}=  Openbmc Post Request  ${REST_DUMP_URI}action/DeleteAll  data=${args}
     Should Be Equal As Strings  ${resp.status_code}  ${HTTP_OK}
 
 Dump Should Not Exist
@@ -241,6 +239,23 @@ Trigger Core Dump
     Should Be Empty  ${stderr}  msg=BMC execute command error.
     Should Be Equal As Integers  ${rc}  ${0}
     ...  msg=BMC execute command return code is not zero.
+
+Initiate BMC Dump Using Redfish And Return Task Id
+     [Documentation]  Initiate BMC dump via Redfish and return its task ID.
+
+     ${payload}=  Create Dictionary  DiagnosticDataType=Manager
+     ${resp}=  Redfish.Post
+     ...  /redfish/v1/Managers/bmc/LogServices/Dump/Actions/LogService.CollectDiagnosticData
+     ...  body=${payload}  valid_status_codes=[${HTTP_ACCEPTED}]
+
+     # Example of response from above Redfish POST request.
+     # "@odata.id": "/redfish/v1/TaskService/Tasks/0",
+     # "@odata.type": "#Task.v1_4_3.Task",
+     # "Id": "0",
+     # "TaskState": "Running",
+     # "TaskStatus": "OK"
+
+     [Return]  ${resp.dict['Id']}
 
 Create User Initiated BMC Dump Via Redfish
     [Documentation]  Generate user initiated BMC dump via Redfish and return the dump id number (e.g., "5").
@@ -368,7 +383,6 @@ Get Dump ID And Status
     # Description of argument(s):
     # task_id        Task ID.
 
-    ${task_status}=  Wait Until Keyword Succeeds  10 min  15 sec  Check Task Completion  ${task_id}
-    ${dump_id}=  Run Keyword If  '${task_status}' == 'Completed'  Get Dump ID  ${task_id}
-    ...  ELSE  Set Variable  None
-    [Return]  ${dump_id}  ${task_status}
+    Wait Until Keyword Succeeds  10 min  15 sec  Check Task Completion  ${task_id}
+    ${dump_id}=  Get Dump ID  ${task_id}
+    [Return]  ${dump_id}  Completed

@@ -26,9 +26,8 @@ Get Logging Entry List
     ${entry_list}=  Create List
     ${resp}=  OpenBMC Get Request  ${BMC_LOGGING_ENTRY}list  quiet=${1}
     Return From Keyword If  ${resp.status_code} == ${HTTP_NOT_FOUND}
-    ${jsondata}=  To JSON  ${resp.content}
 
-    FOR  ${entry}  IN  @{jsondata["data"]}
+    FOR  ${entry}  IN  @{resp.json()["data"]}
         Continue For Loop If  '${entry.rsplit('/', 1)[1]}' == 'callout'
         Append To List  ${entry_list}  ${entry}
     END
@@ -132,12 +131,10 @@ Verify Watchdog Errorlog Content
 
 Logging Test Binary Exist
     [Documentation]  Verify existence of prerequisite logging-test.
-    Open Connection And Log In
-    ${out}  ${stderr}=  Execute Command
-    ...  which /tmp/tarball/bin/logging-test  return_stderr=True
+    ${stdout}  ${stderr}  ${rc}=
+    ...  BMC Execute Command  test -f /tmp/tarball/bin/logging-test  print_out=1
     Should Be Empty  ${stderr}  msg=Logging Test stderr is non-empty.
-    Should Contain  ${out}  logging-test
-    ...  msg=Logging test returned unexpected result.
+
 
 Clear Existing Error Logs
     [Documentation]  If error log isn't empty, reboot the BMC to clear the log.
@@ -204,8 +201,7 @@ Count Error Entries
     ${resp}=  OpenBMC Get Request  ${BMC_LOGGING_ENTRY}
     Should Be Equal As Strings  ${resp.status_code}  ${HTTP_OK}
     ...  msg=Failed to get error logs.
-    ${jsondata}=  To JSON  ${resp.content}
-    ${count}=  Get Length  ${jsondata["data"]}
+    ${count}=  Get Length  ${resp.json()["data"]}
     [Return]  ${count}
 
 Verify Test Error Log
@@ -321,3 +317,39 @@ Event Log Should Not Exist
 
     ${elogs}=  Get Event Logs
     Should Be Empty  ${elogs}  msg=System event log entry is not empty.
+
+
+Redfish Clear PostCodes
+    [Documentation]  Do Redfish PostCodes purge from system.
+
+    ${target_action}=  redfish_utils.Get Target Actions
+    ...  /redfish/v1/Systems/system/LogServices/PostCodes/  LogService.ClearLog
+    Redfish.Post  ${target_action}  body={'target': '${target_action}'}
+    ...  valid_status_codes=[${HTTP_OK}, ${HTTP_NO_CONTENT}]
+
+
+Redfish Get PostCodes
+    [Documentation]  Perform Redfish GET request and return the PostCodes entries as a list of dictionaries.
+
+    # Formatted example output from Rprint vars  members
+    # members:
+    #  [0]:
+    #    [@odata.id]:               /redfish/v1/Systems/system/LogServices/PostCodes/Entries/B1-1
+    #    [@odata.type]:             #LogEntry.v1_8_0.LogEntry
+    #    [AdditionalDataURI]:       /redfish/v1/Systems/system/LogServices/PostCodes/Entries/B1-1/attachment
+    #    [Created]:                 2022-08-06T04:38:10+00:00
+    #    [EntryType]:               Event
+    #    [Id]:                      B1-1
+    #    [Message]:                 Message": "Boot Count: 4: TS Offset: 0.0033; POST Code: 0x43
+    #    [MessageArgs]:
+    #      [0]:                    4
+    #      [1]:                    0.0033
+    #      [2]:                    0x43
+    #    [MessageId]:              OpenBMC.0.2.BIOSPOSTCodeASCII
+    #    [Name]:                   POST Code Log Entry
+    #    [Severity]:               OK
+
+    ${members}=  Redfish.Get Attribute  /redfish/v1/Systems/system/LogServices/PostCodes/Entries  Members
+    ...  valid_status_codes=[${HTTP_OK}, ${HTTP_NO_CONTENT}]
+
+    [Return]  ${members}

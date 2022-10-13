@@ -8,6 +8,7 @@ Resource                ../../lib/bmc_redfish_utils.robot
 Resource                ../../lib/external_intf/management_console_utils.robot
 Resource                ../../lib/rest_response_code.robot
 Library                 ../../lib/bmc_network_utils.py
+Library                 JSONLibrary
 
 Suite Setup              Run Keyword And Ignore Error  Delete All Redfish Sessions
 Suite Teardown           Run Keyword And Ignore Error  Delete All Redfish Sessions
@@ -16,6 +17,7 @@ Test Teardown            FFDC On Test Case Fail
 
 *** Variables ***
 
+${CONFLICT_RQUEST}       Conflict
 ${BAD_REQUEST}           Bad Request
 &{default_trans_id}      TransactionID=${1}
 
@@ -114,9 +116,19 @@ Fail To Acquire Read And Write In Single Request
     [Tags]  Fail_To_Acquire_Read_And_Write_In_Single_Request
     [Template]  Verify Fail To Acquire Read And Write In Single Request
 
+    # client_id    lock_type               status_code
+    HMCID-01       ReadCase1,WriteCase1    ${HTTP_CONFLICT}
+    HMCID-01       WriteCase1,ReadCase1    ${HTTP_CONFLICT}
+    HMCID-01       WriteCase1,WriteCase1   ${HTTP_CONFLICT}
+
+
+Acquire Read In Single Request
+    [Documentation]  Acquire read in single request.
+    [Tags]  Acquire_Read_In_Single_Request
+    [Template]  Verify Acquire Read In Single Request
+
     # client_id    lock_type
-    HMCID-01       ReadCase1,WriteCase1
-    HMCID-01       WriteCase1,ReadCase1
+    HMCID-01       ReadCase1,ReadCase1
 
 
 Acquire Multiple Lock Request At CEC Level
@@ -443,8 +455,10 @@ Redfish Post Acquire Lock
     # status_code    HTTP status code.
 
     ${lock_dict_param}=  Form Data To Acquire Lock  ${lock_type}
+    ${lock_dict_param}=  Convert JSON To String  ${lock_dict_param}
     ${resp}=  Redfish Post Request
     ...  /ibm/v1/HMC/LockService/Actions/LockService.AcquireLock  data=${lock_dict_param}
+    ...  expected_status=any
     Should Be Equal As Strings  ${resp.status_code}  ${status_code}
 
     Run Keyword If  ${status_code} == ${HTTP_BAD_REQUEST}
@@ -464,9 +478,16 @@ Redfish Post Acquire List Lock
     # status_code    HTTP status code.
 
     ${lock_dict_param}=  Create Data To Acquire List Of Lock  ${lock_type}
+    ${lock_dict_param}=  Convert JSON To String  ${lock_dict_param}
     ${resp}=  Redfish Post Request
     ...  /ibm/v1/HMC/LockService/Actions/LockService.AcquireLock  data=${lock_dict_param}
+    ...   expected_status=any
     Should Be Equal As Strings  ${resp.status_code}  ${status_code}
+
+    Run Keyword If  ${status_code} == ${HTTP_CONFLICT}
+    ...    Should Be Equal As Strings  ${CONFLICT_RQUEST}  ${resp.content}
+    ...  ELSE
+    ...    Run Keyword And Return  Return Description Of Response  ${resp.content}
 
     [Return]  ${resp}
 
@@ -481,6 +502,7 @@ Redfish Post Acquire Invalid Lock
     # status_code    HTTP status code.
 
     ${lock_dict_param}=  Form Data To Acquire Invalid Lock  ${lock_type}
+    ${lock_dict_param}=  Convert JSON To String  ${lock_dict_param}
     ${resp}=  Redfish Post Request
     ...  /ibm/v1/HMC/LockService/Actions/LockService.AcquireLock  data=${lock_dict_param}
     Should Be Equal As Strings  ${resp.status_code}  ${status_code}
@@ -500,6 +522,7 @@ Redfish Post Acquire Invalid Lock With Invalid Data Type Of Resource ID
 
     ${lock_dict_param}=
     ...  Form Data To Acquire Invalid Lock With Invalid Data Type Of Resource ID  ${lock_type}
+    ${lock_dict_param}=  Convert JSON To String  ${lock_dict_param}
     ${resp}=  Redfish Post Request
     ...  /ibm/v1/HMC/LockService/Actions/LockService.AcquireLock  data=${lock_dict_param}
     Should Be Equal As Strings  ${resp.status_code}  ${status_code}
@@ -643,6 +666,7 @@ Acquire Lock On Resource
     Run Keyword If  '${reboot_flag}' == 'True'
     ...  Run Keywords  Redfish BMC Reset Operation  AND
     ...  Set Global Variable  ${XAUTH_TOKEN}  ${before_reboot_xauth_token}  AND
+    ...  Wait Until Keyword Succeeds  3 min  10 sec  Redfish BMC Match States  match_state=Enabled  AND
     ...  Is BMC Standby  AND
     ...  Verify Lock On Resource  ${session_info}  ${trans_id_emptylist}
 
@@ -724,6 +748,23 @@ Acquire Lock On Another Lock
 
 Verify Fail To Acquire Read And Write In Single Request
     [Documentation]  Verify fail to acquire read and write lock passed in single request.
+    [Arguments]  ${client_id}  ${lock_type}  ${status_code}
+
+    # Description of argument(s):
+    # client_id     This client id can contain string value
+    #               (e.g. 12345, "HMCID").
+    # lock_type     Read lock or Write lock.
+    # status_code   HTTP status code
+
+    ${lock_type_list}=  Split String  ${lock_type}  ,
+
+    ${session_info}=  Create Redfish Session With ClientID  ${client_id}
+    ${trans_id}=  Redfish Post Acquire List Lock  ${lock_type_list}  status_code=${status_code}
+    Redfish Delete Session  ${session_info}
+
+
+Verify Acquire Read In Single Request
+    [Documentation]  Verify acquire read in single request.
     [Arguments]  ${client_id}  ${lock_type}
 
     # Description of argument(s):
@@ -731,10 +772,18 @@ Verify Fail To Acquire Read And Write In Single Request
     #              (e.g. 12345, "HMCID").
     # lock_type    Read lock or Write lock.
 
+    ${trans_id_list}=  Create List
     ${lock_type_list}=  Split String  ${lock_type}  ,
 
     ${session_info}=  Create Redfish Session With ClientID  ${client_id}
-    ${trans_id}=  Redfish Post Acquire List Lock  ${lock_type_list}  status_code=${HTTP_BAD_REQUEST}
+    ${trans_id}=  Redfish Post Acquire List Lock  ${lock_type_list}
+    Append To List  ${trans_id_list}  ${trans_id}
+    Append To List  ${trans_id_list}  ${trans_id}
+
+    Verify Lock On Resource  ${session_info}  ${trans_id_list}
+    Remove From List  ${trans_id_list}  1
+    Release Locks On Resource  ${session_info}  ${trans_id_list}
+
     Redfish Delete Session  ${session_info}
 
 
@@ -799,6 +848,7 @@ Verify Acquire Lock After Reboot
     ${before_reboot_xauth_token}=  Set Variable  ${XAUTH_TOKEN}
     Redfish BMC Reset Operation
     Set Global Variable  ${XAUTH_TOKEN}  ${before_reboot_xauth_token}
+    Wait Until Keyword Succeeds  3 min  10 sec  Redfish BMC Match States  match_state=Enabled
     Is BMC Standby
 
     ${trans_id}=  Redfish Post Acquire Lock  ${lock_type}
@@ -880,6 +930,7 @@ Verify Acquire And Release Lock In Loop
     Run Keyword If  '${reboot_flag}' == 'True'
     ...  Run Keywords  Redfish BMC Reset Operation  AND
     ...  Set Global Variable  ${XAUTH_TOKEN}  ${before_reboot_xauth_token}  AND
+    ...  Wait Until Keyword Succeeds  3 min  10 sec  Redfish BMC Match States  match_state=Enabled  AND
     ...  Is BMC Standby  AND
     ...  Post Reboot Acquire Lock  ${session_info}  ${lock_type}
     Redfish Delete Session  ${session_info}
@@ -1112,7 +1163,7 @@ Verify Fail To Release Lock For Another Session
     Verify Lock On Resource  ${session_info2}  ${trans_id_list2}
 
     Release Locks On Resource
-    ...  ${session_info1}  ${trans_id_list1}  Transaction  status_code=${HTTP_UNAUTHORIZED}
+    ...  ${session_info1}  ${trans_id_list1}  Transaction  status_code=${HTTP_BAD_REQUEST}
     Verify Lock On Resource  ${session_info1}  ${trans_id_list1}
     Release Locks On Resource  ${session_info1}  ${trans_id_list1}  release_lock_type=Session
     Release Locks On Resource  ${session_info2}  ${trans_id_list2}  release_lock_type=Session
@@ -1195,7 +1246,7 @@ Get Locks List On Resource With Session List
     # exp_status_code    Expected HTTP status code.
 
     ${resp}=  Redfish Post Request  /ibm/v1/HMC/LockService/Actions/LockService.GetLockList
-    ...  data={"SessionIDs": ${session_id_list}}
+    ...  data={"SessionIDs":${session_id_list}}  expected_status=any
     Should Be Equal As Strings  ${resp.status_code}  ${exp_status_code}
     ${locks}=  Evaluate  json.loads('''${resp.text}''')  json
 

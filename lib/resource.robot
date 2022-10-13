@@ -1,7 +1,7 @@
 *** Settings ***
 Library           Collections
 Library           String
-Library           RequestsLibrary.RequestsKeywords
+Library           RequestsLibrary
 Library           OperatingSystem
 Variables         ../data/variables.py
 
@@ -37,7 +37,6 @@ ${SERVICE_USER_PASSWORD}   0penBmc
 ${USER_TYPE}          ${EMPTY}
 
 ${CHASSIS_ID}  chassis
-${COMPONENT_NAME_OF_POWER_SUPPLY}  powersupply
 
 # MTLS_ENABLED indicates whether mTLS is enabled.
 ${MTLS_ENABLED}        False
@@ -80,6 +79,7 @@ ${IPMI_PORT}        623
 ${HOST_SOL_PORT}    2200
 ${OPENBMC_SERIAL_HOST}      ${EMPTY}
 ${OPENBMC_SERIAL_PORT}      ${EMPTY}
+${OPENBMC_CONSOLE_CLIENT}   ${EMPTY}
 
 # OS related parameters.
 ${OS_HOST}          ${EMPTY}

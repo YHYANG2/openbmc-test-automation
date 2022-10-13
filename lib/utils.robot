@@ -396,7 +396,7 @@ Trigger Warm Reset
 
     log to console    "Triggering warm reset"
     ${data}=   create dictionary   data=@{EMPTY}
-    ${resp}=  openbmc post request
+    ${resp}=  Openbmc Post Request
     ...  ${OPENBMC_BASE_URI}control/bmc0/action/warmReset  data=${data}
     Should Be Equal As Strings      ${resp.status_code}     ${HTTP_OK}
     ${session_active}=   Check If warmReset is Initiated
@@ -421,9 +421,8 @@ Get Power State
     ${resp}=  Call Method  ${OPENBMC_BASE_URI}control/chassis0/  getPowerState
     ...        data=${args}  quiet=${quiet}
     Should be equal as strings  ${resp.status_code}  ${HTTP_OK}
-    ${content}=  to json  ${resp.content}
 
-    [Return]  ${content["data"]}
+    [Return]  ${resp.json()["data"]}
 
 
 Clear BMC Gard Record
@@ -567,9 +566,9 @@ Delete Error Logs
 Delete All Error Logs
     [Documentation]  Delete all error log entries using "DeleteAll" interface.
 
-    ${data}=  Create Dictionary  data=@{EMPTY}
+    ${args}=  Set Variable   {"data": []}
     ${resp}=  Openbmc Post Request  ${BMC_LOGGING_URI}action/DeleteAll
-    ...  data=${data}
+    ...  data=${args}
     Should Be Equal As Strings  ${resp.status_code}  ${HTTP_OK}
 
 
@@ -803,7 +802,7 @@ Update Root Password
     ${data}=  Create Dictionary  data=@{password}
 
     ${headers}=  Create Dictionary  Content-Type=application/json  X-Auth-Token=${XAUTH_TOKEN}
-    ${resp}=  Post Request  openbmc  ${BMC_USER_URI}root/action/SetPassword
+    ${resp}=  POST On Session  openbmc  ${BMC_USER_URI}root/action/SetPassword
     ...  data=${data}  headers=${headers}
     Valid Value  resp.status_code  [${HTTP_OK}]
 
@@ -830,6 +829,35 @@ Get Post Boot Action
     Rprint Vars  post_code_update_actions
 
     [Return]  ${post_code_update_actions}
+
+
+Get Task State From File
+    [Documentation]  Get task states from pre-define data/task_state.json file.
+
+    # Example:  Task state JSON format.
+    #
+    # {
+    #   "TaskRunning": {
+    #           "TaskState": "Running",
+    #           "TaskStatus": "OK"
+    #   },
+    #   "TaskCompleted": {
+    #           "TaskState": "Completed",
+    #           "TaskStatus": "OK"
+    #   },
+    #   "TaskException": {
+    #           "TaskState": "Exception",
+    #           "TaskStatus": "Warning"
+    #   }
+    # }
+
+    # Python module: get_code_base_dir_path()
+    ${code_base_dir_path}=  Get Code Base Dir Path
+    ${task_state}=  Evaluate
+    ...  json.load(open('${code_base_dir_path}data/task_state.json'))  modules=json
+    Rprint Vars  task_state
+
+    [Return]  ${task_state}
 
 
 Redfish Set Boot Default
@@ -1081,7 +1109,22 @@ PLDM Get BIOS Attribute
 
     ${pldm_output}=  pldmtool  bios GetBIOSAttributeCurrentValueByHandle -a ${attribute_name}
     [Return]  ${pldm_output}
-    Wait Until Keyword Succeeds  5 min  5 sec  Ping Host  ${OPENBMC_HOST}
-    Redfish.login
-    ${bmc_status}=  Redfish.Get Attribute  /redfish/v1/Managers/bmc  Status
-    Should Be Equal  ${bmc_status["State"]}  Enabled
+
+
+Verify Host Power State
+    [Documentation]  Get the Host Power state and compare it with the expected state.
+    [Arguments]  ${expected_power_state}
+
+    # Description of argument(s):
+    # expected_power_state   State of Host e.g. Off or On.
+
+    ${power_state}  ${health_status}=  Redfish Get Host State
+    Should Be Equal  ${power_state}  ${expected_power_state}
+
+
+Verify Host Is Up
+    [Documentation]  Verify Host is Up.
+
+    Wait Until Keyword Succeeds  3 min  30 sec  Verify Host Power State  On
+    # Python module:  os_execute(cmd)
+    Wait Until Keyword Succeeds  10 min  30 sec  OS Execute Command  uptime

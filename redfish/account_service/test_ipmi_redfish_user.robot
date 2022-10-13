@@ -17,6 +17,7 @@ ${valid_password}       0penBmc1
 ${valid_password2}      0penBmc2
 ${admin_level_priv}     4
 ${operator_level_priv}  3
+${readonly_level_priv}  2
 # Refer:  #openbmc/phosphor-user-manager/blob/master/user_mgr.cpp
 # ipmiMaxUsers = 15;    <-- IPMI
 # maxSystemUsers = 30;  <-- Max system redfish account users allowed
@@ -164,10 +165,9 @@ Update User Password Via IPMI And Verify Using Redfish
     Redfish.Login
 
 
-Update User Privilege Via IPMI And Verify Using Redfish
-    [Documentation]  Update user privilege via IPMI and verify using Redfish.
-    [Tags]  Update_User_Privilege_Via_IPMI_And_Verify_Using_Redfish
-
+Update User Privilege To Operator Via IPMI And Verify Using Redfish
+    [Documentation]  Update user privilege to operator via IPMI and verify using Redfish.
+    [Tags]  Update_User_Privilege_To_Operator_Via_IPMI_And_Verify_Using_Redfish
     # Create user using IPMI with admin privilege.
     ${username}  ${userid}=  IPMI Create Random User Plus Password And Privilege
     ...  ${valid_password}  ${admin_level_priv}
@@ -180,6 +180,24 @@ Update User Privilege Via IPMI And Verify Using Redfish
     ${privilege}=  Redfish_Utils.Get Attribute
     ...  /redfish/v1/AccountService/Accounts/${username}  RoleId
     Should Be Equal  ${privilege}  Operator
+
+
+Update User Privilege To Readonly Via IPMI And Verify Using Redfish
+    [Documentation]  Update user privilege to readonly via IPMI and verify using Redfish.
+    [Tags]  Update_User_Privilege_To_Readonly_Via_IPMI_And_Verify_Using_Redfish
+
+    # Create user using IPMI with admin privilege.
+    ${username}  ${userid}=  IPMI Create Random User Plus Password And Privilege
+    ...  ${valid_password}  ${admin_level_priv}
+
+    # Change user privilege to readonly using IPMI.
+    Run IPMI Standard Command
+    ...  user priv ${userid} ${readonly_level_priv} ${CHANNEL_NUMBER}
+
+    # Verify new user privilege level via Redfish.
+    ${privilege}=  Redfish_Utils.Get Attribute
+    ...  /redfish/v1/AccountService/Accounts/${username}  RoleId
+    Should Be Equal  ${privilege}  ReadOnly
 
 
 Delete User Via IPMI And Verify Using Redfish
@@ -201,6 +219,8 @@ Delete User Via IPMI And Verify Using Redfish
 Verify Failure To Exceed Max Number Of Users
     [Documentation]  Verify failure attempting to exceed the max number of user accounts.
     [Tags]  Verify_Failure_To_Exceed_Max_Number_Of_Users
+    [Teardown]  Run Keywords  Test Teardown Execution
+    ...         AND  Delete Users Via Redfish  ${username_list}
 
     # Get existing user count.
     ${resp}=  Redfish.Get  /redfish/v1/AccountService/Accounts/
@@ -225,10 +245,6 @@ Verify Failure To Exceed Max Number Of Users
     Set To Dictionary  ${payload}  UserName  ${random_username}
     Redfish.Post  ${REDFISH_ACCOUNTS_URI}  body=&{payload}
     ...  valid_status_codes=[${HTTP_BAD_REQUEST}]
-
-    FOR  ${saved_user_list}  IN  @{username_list}
-      Redfish.Delete  ${saved_user_list}
-    END
 
 
 Create IPMI User Without Any Privilege And Verify Via Redfish
@@ -273,6 +289,22 @@ IPMI Create Random User Plus Password And Privilege
     ...  Set Channel Access  ${random_userid}  ipmi=on privilege=${privilege}
 
     [Return]  ${random_username}  ${random_userid}
+
+
+Delete Users Via Redfish
+    [Documentation]  Delete all the users via redfish from given list.
+    [Arguments]  ${user_list}
+
+    # Description of argument(s):
+    # user_list    List of user which are to be deleted.
+
+    Redfish.Login
+
+    FOR  ${user}  IN  @{user_list}
+      Redfish.Delete  ${user}
+    END
+
+    Redfish.Logout
 
 
 Test Setup Execution
